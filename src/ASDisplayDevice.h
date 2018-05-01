@@ -554,7 +554,7 @@ HRESULT ASDisplayDevice::CreateEffect()
 //#endif
 
 	ID3D10Blob *compErrors;
-	hr = D3DX10CreateEffectFromFile(("../ASEntryPoint.fx"), NULL, NULL, "fx_4_0", dwShaderFlags, 0, m_d3dDevice, NULL,
+	hr = D3DX10CreateEffectFromFile(("ASEntryPoint.fx"), NULL, NULL, "fx_4_0", dwShaderFlags, 0, m_d3dDevice, NULL,
 		NULL, &m_d3dEffect, &compErrors, NULL);
 	char* pCompileErrors = static_cast<char*>(compErrors->GetBufferPointer());
 	test(hr, pCompileErrors);

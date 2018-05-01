@@ -1,6 +1,10 @@
 # Prerequisites
 *.d
+
 src/asps2018/*
+*.ilk
+*.pdb
+
 # Compiled Object files
 *.slo
 *.lo

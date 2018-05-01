@@ -39,7 +39,7 @@ class ASScreenDisplay : public ASDisplayObject
 
 	effectResourceVariable m_rrHUD;
 	effectResourceVariable m_rrEnvMap;
-	const char* HUDTexturePath = "../../Medias/Textures/Display.tif";
+	const char* HUDTexturePath = "../Medias/Textures/Display.tif";
 	//HUD																	
 	bool m_textDisplayed;						
 					

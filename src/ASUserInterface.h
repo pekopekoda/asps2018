@@ -25,7 +25,7 @@ User config file should contain the following keywords:
 
 */
 
-#define CONFIG_FILE "../config.cfg"
+#define CONFIG_FILE "config.cfg"
 #define PARAM_FILE_MAX 30   //Number of lines which will be read in ASPSParameters.txt
 #define MAXPARTICLES_FILELINE 3
 #define EMISSIONRATE_FILELINE 4

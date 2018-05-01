@@ -4,8 +4,8 @@
 #include "ASEnvironment.h"
 #include "ASMesh.h"
 
-#define MESH_PATH  "../../Medias/Meshes/"
-#define TEXTURE_PATH  "../../Medias/Textures/"
+#define MESH_PATH  "../Medias/Meshes/"
+#define TEXTURE_PATH  "../Medias/Textures/"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////FIELDS MACROS
