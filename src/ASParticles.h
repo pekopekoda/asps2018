@@ -1,6 +1,6 @@
-#include "ASDisplayObject.h"
+#include "ASSceneObject.h"
 
-class ASParticlesDisplay : public ASDisplayObject
+class ASParticles : public ASSceneObject
 {
 	class ParticlesRenderTechnique: public RenderTechnique
 	{
@@ -92,7 +92,7 @@ class ASParticlesDisplay : public ASDisplayObject
 	effectFloatVariable m_fvRate;
 	effectFloatVariable m_fvTimeToNextEmit;
 
-	~ASParticlesDisplay();
+	~ASParticles();
 
 public:
 	effectResourceVariable *GetInstanceRenderResource();
@@ -102,25 +102,25 @@ public:
 	void InitBuffers();
 	void Render();
 	void Clear();
-	ASParticlesDisplay();
+	ASParticles();
 };
 
-UINT ASParticlesDisplay::ParticlesInstanceRenderTechnique::GetSizeOfVertexPrototype()
+UINT ASParticles::ParticlesInstanceRenderTechnique::GetSizeOfVertexPrototype()
 {
 	return sizeof(VERTEX_PROTOTYPE);
 }
 
 
-UINT ASParticlesDisplay::ParticlesRenderTechnique::GetSizeOfVertexPrototype()
+UINT ASParticles::ParticlesRenderTechnique::GetSizeOfVertexPrototype()
 {
 	return sizeof(VERTEX_PROTOTYPE);
 }
 
-void ASParticlesDisplay::ParticlesRenderTechnique::Init(const char *techniqueName, UINT nbr)
+void ASParticles::ParticlesRenderTechnique::Init(const char *techniqueName, UINT nbr)
 {
 	m_firstBuffer = NULL;
 	m_secondBuffer = NULL;
-	ASDisplayObject::RenderTechnique::Init(techniqueName);
+	ASSceneObject::RenderTechnique::Init(techniqueName);
 	VERTEX_PROTOTYPE vp1;
 	vector<VERTEX_PROTOTYPE> vps;
 	vps.assign(1, vp1);
@@ -159,7 +159,7 @@ void ASParticlesDisplay::ParticlesRenderTechnique::Init(const char *techniqueNam
 	m_vBuffers = { m_bufferStart, m_firstBuffer , m_secondBuffer };
 }
 
-void ASParticlesDisplay::ParticlesRenderTechnique::FirstPass(bool isFirstFrame)
+void ASParticles::ParticlesRenderTechnique::FirstPass(bool isFirstFrame)
 {
 	m_device->SetInputLayout(m_layout);
 	ID3D10Buffer* pBuffers[1];
@@ -189,12 +189,12 @@ void ASParticlesDisplay::ParticlesRenderTechnique::FirstPass(bool isFirstFrame)
 	m_device->StreamOutputSetTargets(1, pBuffers, offset);
 }
 
-inline effectResourceVariable * ASParticlesDisplay::GetInstanceRenderResource()
+inline effectResourceVariable * ASParticles::GetInstanceRenderResource()
 {
 	return &m_rrParticlesVelocity;
 }
 
-void ASParticlesDisplay::InitShaderResources(vector<string> vsBuf)
+void ASParticles::InitShaderResources(vector<string> vsBuf)
 {
 	//m_pUpdateRenderTechnique= m_device->GetTechniqueByName("UpdateParticles");
 	//m_pRenderTechnique		= m_device->GetTechniqueByName("RenderParticles");
@@ -284,7 +284,7 @@ void ASParticlesDisplay::InitShaderResources(vector<string> vsBuf)
 	m_bvBump			.Push(0);
 }
 
-void ASParticlesDisplay::InitViews()
+void ASParticles::InitViews()
 {
 	renderTargets2D pRenderTargets2D(m_vEffectResourceVariable2D.size(), NULL);
 	renderTargets1D pRenderTargets1D;
@@ -292,13 +292,13 @@ void ASParticlesDisplay::InitViews()
 
 	int views2DNbr = pRenderTargets2D.size();
 
-	ASDisplayObject::InitViews(pRenderTargets2D, pRenderTargets1D);
+	ASSceneObject::InitViews(pRenderTargets2D, pRenderTargets1D);
 
 	for (int i = 0; i < views2DNbr; i++)
 		pRenderTargets2D[i]->Release();
 }
 
-void ASParticlesDisplay::InitBuffers()
+void ASParticles::InitBuffers()
 {
 	m_updateRenderTechnique.Init("UpdateParticles", m_maxParticles + 1);
 	m_renderInstanceTechnique.Init("RenderParticles", m_meshPath.c_str(), m_maxParticles + 1, &m_updateRenderTechnique);
@@ -307,7 +307,7 @@ void ASParticlesDisplay::InitBuffers()
 //--------------------------------------------------------------------------------------
 // Render fields on screen
 //--------------------------------------------------------------------------------------
-void ASParticlesDisplay::Render()
+void ASParticles::Render()
 {
 	switch (m_env->userInput.currentKey)
 	{
@@ -351,8 +351,8 @@ void ASParticlesDisplay::Render()
 	m_isFirstFrame = false;
 }
 
-void ASParticlesDisplay::Clear()
+void ASParticles::Clear()
 {
 }
 
-ASParticlesDisplay::ASParticlesDisplay(): m_isFirstFrame(true){}
+ASParticles::ASParticles(): m_isFirstFrame(true){}

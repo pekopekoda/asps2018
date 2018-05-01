@@ -1,12 +1,12 @@
-#include "ASDisplayObject.h"
+#include "ASSceneObject.h"
 #include "ASEnvironment.h"
 
 /*The screen is a square rendered in front of the camera. It is rendered through two passes.
 The first pass displays the other objects rendered in the scene as a texture and drops the render into a render texture.
 The second pass gets the previous render texture and render the scene one more time, allowing to perform special effect as depth of field or glow.*/
-class ASScreenDisplay : public ASDisplayObject
+class ASScreen : public ASSceneObject
 {
-	class ScreenRenderTechnique : public ASDisplayObject::RenderTechnique
+	class ScreenRenderTechnique : public ASSceneObject::RenderTechnique
 	{
 		struct VERTEX_PROTOTYPE
 		{
@@ -50,9 +50,9 @@ public:
 	void Render();
 };
 
-void ASScreenDisplay::ScreenRenderTechnique::Init(const char *techniqueName)
+void ASScreen::ScreenRenderTechnique::Init(const char *techniqueName)
 {
-	ASDisplayObject::RenderTechnique::Init(techniqueName);
+	ASSceneObject::RenderTechnique::Init(techniqueName);
 
 	VERTEX_PROTOTYPE vp1;
 	vector<VERTEX_PROTOTYPE> vps;
@@ -87,7 +87,7 @@ void ASScreenDisplay::ScreenRenderTechnique::Init(const char *techniqueName)
 	m_vBuffers = { m_firstBuffer };
 }
 
-void ASScreenDisplay::ScreenRenderTechnique::PrePass()
+void ASScreen::ScreenRenderTechnique::PrePass()
 {
 	m_device->SetInputLayout(m_layout);
 
@@ -100,7 +100,7 @@ void ASScreenDisplay::ScreenRenderTechnique::PrePass()
 	m_device->SetPrimitiveTopology();
 }
 
-void ASScreenDisplay::ScreenRenderTechnique::FirstPass()
+void ASScreen::ScreenRenderTechnique::FirstPass()
 {
 	D3D10_TECHNIQUE_DESC techDesc;
 	m_technique->GetDesc(&techDesc);
@@ -109,7 +109,7 @@ void ASScreenDisplay::ScreenRenderTechnique::FirstPass()
 }
 
 
-void ASScreenDisplay::ScreenRenderTechnique::SecondPass()
+void ASScreen::ScreenRenderTechnique::SecondPass()
 {
 	D3D10_TECHNIQUE_DESC techDesc;
 	m_technique->GetDesc(&techDesc);
@@ -118,7 +118,7 @@ void ASScreenDisplay::ScreenRenderTechnique::SecondPass()
 	m_device->Draw(6);
 }
 
-void ASScreenDisplay::ScreenRenderTechnique::ThirdPass()
+void ASScreen::ScreenRenderTechnique::ThirdPass()
 {
 	D3D10_TECHNIQUE_DESC techDesc;
 	m_technique->GetDesc(&techDesc);
@@ -128,12 +128,12 @@ void ASScreenDisplay::ScreenRenderTechnique::ThirdPass()
 }
 
 
-void ASScreenDisplay::InitBuffers()
+void ASScreen::InitBuffers()
 {
 	m_renderTechnique.Init("RenderScreen");
 }
 
-void ASScreenDisplay::InitViews()
+void ASScreen::InitViews()
 {
 	//Render target handlers
 	ID3D10Texture2D *renderForOtherObjects = NULL;
@@ -150,13 +150,13 @@ void ASScreenDisplay::InitViews()
 	renderTargets1D pRenderTargets1D;
 	int views2DNbr = pRenderTargets2D.size();
 
-	ASDisplayObject::InitViews(pRenderTargets2D, pRenderTargets1D);
+	ASSceneObject::InitViews(pRenderTargets2D, pRenderTargets1D);
 
 	for (int i = 0; i < views2DNbr; i++)
 		pRenderTargets2D[i]->Release();
 }
 
-void ASScreenDisplay::InitShaderResources(vector<string> vsBuf)
+void ASScreen::InitShaderResources(vector<string> vsBuf)
 {
 	m_rrMainRenderResource = effectResourceVariable("txScreen0");
 	m_rrHUD = effectResourceVariable("txHUD");
@@ -204,7 +204,7 @@ void ASScreenDisplay::InitShaderResources(vector<string> vsBuf)
 //--------------------------------------------------------------------------------------
 // Render screen(s)
 //--------------------------------------------------------------------------------------
-void ASScreenDisplay::Render()
+void ASScreen::Render()
 {
 	if (m_env->userInput.keyReleased)
 	{

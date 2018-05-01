@@ -1,8 +1,8 @@
-#include "ASDisplayObject.h"
+#include "ASSceneObject.h"
 
-class ASFieldsDisplay : public ASDisplayObject
+class ASFields : public ASSceneObject
 {
-	class FieldsRenderTechnique : public ASDisplayObject::RenderTechnique
+	class FieldsRenderTechnique : public ASSceneObject::RenderTechnique
 	{
 		struct VERTEX_PROTOTYPE
 		{
@@ -93,9 +93,9 @@ public:
 	void InitShaders();
 	void Render();
 };
-void ASFieldsDisplay::FieldsRenderTechnique::Init(const char *techniqueName)
+void ASFields::FieldsRenderTechnique::Init(const char *techniqueName)
 {
-	ASDisplayObject::RenderTechnique::Init(techniqueName);
+	ASSceneObject::RenderTechnique::Init(techniqueName);
 	const UINT nbr = MAX_FIELDS * 2;
 	VERTEX_PROTOTYPE vp1;
 	vector<VERTEX_PROTOTYPE> vps;
@@ -139,7 +139,7 @@ void ASFieldsDisplay::FieldsRenderTechnique::Init(const char *techniqueName)
 	m_vBuffers = { m_firstBuffer , m_secondBuffer };
 }
 
-void ASFieldsDisplay::FieldsRenderTechnique::FirstPass() 
+void ASFields::FieldsRenderTechnique::FirstPass() 
 {
 	ID3D10Buffer* pBuffers[2];
 	UINT stride[1] = { sizeof(VERTEX_PROTOTYPE) };
@@ -165,7 +165,7 @@ void ASFieldsDisplay::FieldsRenderTechnique::FirstPass()
 	m_device->StreamOutputSetTargets(1, pBuffers, offset);
 }
 
-void ASFieldsDisplay::FieldsRenderTechnique::SecondPass()
+void ASFields::FieldsRenderTechnique::SecondPass()
 {
 	ID3D10Buffer* pBuffers[2];
 	UINT stride[1] = { sizeof(VERTEX_PROTOTYPE) };
@@ -177,7 +177,7 @@ void ASFieldsDisplay::FieldsRenderTechnique::SecondPass()
 	m_device->Draw();
 }
 
-void ASFieldsDisplay::UpdateFieldsNumber(int incr)
+void ASFields::UpdateFieldsNumber(int incr)
 {
 	if ((m_fieldsNumber + incr <= MAX_FIELDS) && (m_fieldsNumber + incr > 0.0))
 	{
@@ -186,7 +186,7 @@ void ASFieldsDisplay::UpdateFieldsNumber(int incr)
 	}
 }
 
-void ASFieldsDisplay::InitShaderResources(vector<string> vsBuf)
+void ASFields::InitShaderResources(vector<string> vsBuf)
 {
 	m_rrFieldsPos = effectResourceVariable("txFieldsPos");
 	m_rrFieldsGoal = effectResourceVariable("txFieldsGoal");
@@ -227,7 +227,7 @@ void ASFieldsDisplay::InitShaderResources(vector<string> vsBuf)
 	m_vEffectResourceVariable1D.push_back(&m_rrFieldsTypeSize);
 }
 
-void ASFieldsDisplay::InitViews()
+void ASFields::InitViews()
 {
 
 	renderTargets2D pRenderTargets2D(m_vEffectResourceVariable2D.size(), NULL);
@@ -236,7 +236,7 @@ void ASFieldsDisplay::InitViews()
 	m_device->CreateTextures2D(pRenderTargets2D, WIDTH, HEIGHT);
 	m_device->CreateTextures1D(pRenderTargets1D, MAX_FIELDS);
 
-	ASDisplayObject::InitViews(pRenderTargets2D, pRenderTargets1D);
+	ASSceneObject::InitViews(pRenderTargets2D, pRenderTargets1D);
 
 	pRenderTargets2D[0]->Release();
 	pRenderTargets1D[0]->Release();
@@ -245,7 +245,7 @@ void ASFieldsDisplay::InitViews()
 	pRenderTargets1D[3]->Release();
 }
 
-void ASFieldsDisplay::InitBuffers()
+void ASFields::InitBuffers()
 {
 	m_renderTechnique.Init("UpdateFields");
 }
@@ -253,7 +253,7 @@ void ASFieldsDisplay::InitBuffers()
 //--------------------------------------------------------------------------------------
 // Render fields on screen
 //--------------------------------------------------------------------------------------
-void ASFieldsDisplay::Render()
+void ASFields::Render()
 {
 	switch (m_env->userInput.currentKey)
 	{

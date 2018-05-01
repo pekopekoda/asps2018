@@ -1,5 +1,5 @@
-#ifndef ASDISPLAYOBJECT_H
-#define ASDISPLAYOBJECT_H
+#ifndef ASSceneObject_H
+#define ASSceneObject_H
 #include "ASDisplayDevice.h"
 #include "ASEnvironment.h"
 #include "ASMesh.h"
@@ -47,7 +47,7 @@
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////Abstract for objects to be rendered in the scene
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-class ASDisplayObject
+class ASSceneObject
 {
 protected:
 	///////////////////////////////////////////////////////////////////////////////////////////////
@@ -135,8 +135,8 @@ protected:
 	effectResourceVariable m_rrMainRenderResource;
 	
 	void InitViews(renderTargets2D &pRenderTargets2D, renderTargets1D &pRenderTargets1D);	
-	ASDisplayObject();
-	~ASDisplayObject();
+	ASSceneObject();
+	~ASSceneObject();
 
 public:
 	//Get the render resource used for main render pass for this object
@@ -149,11 +149,11 @@ public:
 };
 
 
-void ASDisplayObject::InstanceRenderTechnique::Init(const char *techniqueName, const char * meshPath, UINT instanceCount, RenderTechnique *rt)
+void ASSceneObject::InstanceRenderTechnique::Init(const char *techniqueName, const char * meshPath, UINT instanceCount, RenderTechnique *rt)
 {
 	m_instanceCount = instanceCount;
 	m_pInstancer	= rt;
-	ASDisplayObject::RenderTechnique::Init(techniqueName);
+	ASSceneObject::RenderTechnique::Init(techniqueName);
 	HRESULT hr = (ASMesh::LoadFromFile(&m_instanceMesh, meshPath)) ? S_OK : S_FALSE;
 	test(hr, "Mesh load failed");
 	UINT vertexSize = m_instanceMesh.GetVertexSize();
@@ -182,7 +182,7 @@ void ASDisplayObject::InstanceRenderTechnique::Init(const char *techniqueName, c
 	m_instanceMesh.Clear();
 }
 
-void ASDisplayObject::InstanceRenderTechnique::FirstPass()
+void ASSceneObject::InstanceRenderTechnique::FirstPass()
 {
 	m_device->SetInputLayout(m_layout) ;
 	// Set IA parameters
@@ -196,8 +196,8 @@ void ASDisplayObject::InstanceRenderTechnique::FirstPass()
 	m_technique->GetPassByIndex(0)->Apply(0);
 	m_device->DrawInstance(m_instanceMesh.GetIndexCount(), m_instanceCount);
 }
-ASDisplayObject::InstanceRenderTechnique::InstanceRenderTechnique(){}
-ASDisplayObject::InstanceRenderTechnique::~InstanceRenderTechnique() {}
+ASSceneObject::InstanceRenderTechnique::InstanceRenderTechnique(){}
+ASSceneObject::InstanceRenderTechnique::~InstanceRenderTechnique() {}
 
 
 
@@ -209,19 +209,19 @@ ASDisplayObject::InstanceRenderTechnique::~InstanceRenderTechnique() {}
 
 
 
-UINT ASDisplayObject::RenderTechnique::GetSizeOfVertexPrototype()
+UINT ASSceneObject::RenderTechnique::GetSizeOfVertexPrototype()
 {
 	return sizeof(VERTEX_PROTOTYPE);
 }
 
 
-ID3D10Buffer *ASDisplayObject::RenderTechnique::GetFirstBuffer()
+ID3D10Buffer *ASSceneObject::RenderTechnique::GetFirstBuffer()
 {
 	return m_firstBuffer;
 }
 
 
-void ASDisplayObject::RenderTechnique::SwapBuffers()
+void ASSceneObject::RenderTechnique::SwapBuffers()
 {
 	// Swap field buffers
 	ID3D10Buffer* pTemp;
@@ -229,7 +229,7 @@ void ASDisplayObject::RenderTechnique::SwapBuffers()
 	m_firstBuffer = m_secondBuffer;
 	m_secondBuffer = pTemp;
 }
-void ASDisplayObject::RenderTechnique::Init(const char *techniqueName)
+void ASSceneObject::RenderTechnique::Init(const char *techniqueName)
 {
 	m_device = ASDisplayDevice::GetInstance();
 	m_technique = m_device->GetTechniqueByName(techniqueName);
@@ -238,10 +238,10 @@ void ASDisplayObject::RenderTechnique::Init(const char *techniqueName)
 	const vector<D3D10_INPUT_ELEMENT_DESC> proto = GetLayoutPrototype();
 	m_device->CreateInputLayout(GetLayoutPrototype() , passDesc, &m_layout);
 }
-void ASDisplayObject::RenderTechnique::Render() {}
-ASDisplayObject::RenderTechnique::RenderTechnique()
+void ASSceneObject::RenderTechnique::Render() {}
+ASSceneObject::RenderTechnique::RenderTechnique()
 {}
-ASDisplayObject::RenderTechnique::~RenderTechnique()
+ASSceneObject::RenderTechnique::~RenderTechnique()
 {
 	for (vector<ID3D10Buffer*>::iterator it = m_vBuffers.begin(); it != m_vBuffers.end(); it++)
 		(*it)->Release();
@@ -254,7 +254,7 @@ ASDisplayObject::RenderTechnique::~RenderTechnique()
 //
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void ASDisplayObject::InitViews(renderTargets2D &pRenderTargets2D, renderTargets1D &pRenderTargets1D)
+void ASSceneObject::InitViews(renderTargets2D &pRenderTargets2D, renderTargets1D &pRenderTargets1D)
 {
 	UINT RT2DSize = pRenderTargets2D.size();
 	UINT RT1DSize = pRenderTargets1D.size();
@@ -286,12 +286,12 @@ void ASDisplayObject::InitViews(renderTargets2D &pRenderTargets2D, renderTargets
 	}
 }
 
-effectResourceVariable *ASDisplayObject::GetMainRenderResource()
+effectResourceVariable *ASSceneObject::GetMainRenderResource()
 {
 	return &m_rrMainRenderResource;
 }
 
-void ASDisplayObject::AddEffectResourceVariable(effectResourceVariable* rr, int dimension)
+void ASSceneObject::AddEffectResourceVariable(effectResourceVariable* rr, int dimension)
 {
 	if (dimension == 2)
 	{
@@ -306,7 +306,7 @@ void ASDisplayObject::AddEffectResourceVariable(effectResourceVariable* rr, int 
 }
 
 template <typename T>
-HRESULT ASDisplayObject::InitBuffers(vector<ID3D10Buffer*> vBuffers, vector<D3D10_INPUT_ELEMENT_DESC> layout, vector<T> vps, D3D10_BUFFER_DESC vbdesc)
+HRESULT ASSceneObject::InitBuffers(vector<ID3D10Buffer*> vBuffers, vector<D3D10_INPUT_ELEMENT_DESC> layout, vector<T> vps, D3D10_BUFFER_DESC vbdesc)
 {
 	HRESULT hr;
 	// Create the input layout
@@ -334,7 +334,7 @@ HRESULT ASDisplayObject::InitBuffers(vector<ID3D10Buffer*> vBuffers, vector<D3D1
 	return hr;
 }
 
-int ASDisplayObject::Clear()
+int ASSceneObject::Clear()
 {
 	if (m_pDepthStencilView2D ) m_pDepthStencilView2D->Release();
 	if (m_pDepthStencilView1D)  m_pDepthStencilView1D->Release();
@@ -375,18 +375,18 @@ int ASDisplayObject::Clear()
 	return 0;						 
 }
 
-void ASDisplayObject::PreRender()
+void ASSceneObject::PreRender()
 {
 	m_device->ClearRenderTargetViews(m_pRenderTargetViews2D);
 }
 
-ASDisplayObject::ASDisplayObject()
+ASSceneObject::ASSceneObject()
 {
 	m_device = ASDisplayDevice::GetInstance();
 	m_env	 = ASEnvironment::GetInstance();
 	m_pDepthStencilView2D = NULL;
 	m_pDepthStencilView1D = NULL;
 }
-ASDisplayObject::~ASDisplayObject(){}
+ASSceneObject::~ASSceneObject(){}
 
 #endif

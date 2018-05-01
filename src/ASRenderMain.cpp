@@ -11,9 +11,9 @@
 ASDisplayDevice* g_displayDevice = ASDisplayDevice::GetInstance();
 typedef ASUserInterface g_ui;
 ASEnvironment*		g_env		;
-ASScreenDisplay*    g_screen	;
-ASFieldsDisplay*    g_fields	;
-ASParticlesDisplay* g_particles ;
+ASScreen*    g_screen	;
+ASFields*    g_fields	;
+ASParticles* g_particles ;
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLine, int nCmdShow);
@@ -72,9 +72,9 @@ int WINAPI wWinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdL
 
 
 	g_env = ASEnvironment::GetInstance();
-	g_screen = new ASScreenDisplay();
-	g_fields = new ASFieldsDisplay();
-	g_particles = new ASParticlesDisplay();
+	g_screen = new ASScreen();
+	g_fields = new ASFields();
+	g_particles = new ASParticles();
 
 	if (FAILED(g_displayDevice->InitViewport()))
 	{
@@ -84,15 +84,15 @@ int WINAPI wWinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdL
 		g_particles->Clear();
 		return 1;
 	}
+	g_displayDevice->CreateDepthStencilState();
 
 	vector<std::string> buf;
 	buf = g_ui::GetUserFileBuffer();
 	g_env->InitWorld(buf);
+
 	g_screen->InitShaderResources(buf);
 	g_fields->InitShaderResources(buf);
 	g_particles->InitShaderResources(buf);
-
-	g_displayDevice->CreateDepthStencilState();
 
 	g_screen->InitViews();
 	g_fields->InitViews();
