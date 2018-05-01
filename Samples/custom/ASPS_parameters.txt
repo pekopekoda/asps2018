@@ -1,0 +1,17 @@
+sphere.aso
+BrickSmall.jpg
+ramp2.bmp
+500
+30
+9.8
+0.002
+1
+//first line : mesh for particle instancing
+//2nd   line : texture (0 for none)
+//3rd   line : ramp texture associated with particles' lifespan
+//4th	line : Particles buffer size
+//5th	line : Particle emission rate per second (runtime modifiable)
+//6th	line : gravity
+//7th	line : air friction
+//8th   line : 1->particles emitted at emitter center, 0->randomly in emitter area
+// !!!!! file limited to 30 lines !!!!!!
