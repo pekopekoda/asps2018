@@ -1,3 +1,5 @@
+#pragma once
+
 #include "ASSceneObject.h"
 
 class ASFields : public ASSceneObject
@@ -254,7 +256,8 @@ void ASFields::InitBuffers()
 // Render fields on screen
 //--------------------------------------------------------------------------------------
 void ASFields::Render()
-{
+{	
+	m_device->ClearRenderTargetViews(m_pRenderTargetViews2D);
 	switch (m_env->userInput.currentKey)
 	{
 		case CHANGE_TYPE			   : m_env->userInput.m_ivCurrentAction.val = CHANGE_TYPE				; break;

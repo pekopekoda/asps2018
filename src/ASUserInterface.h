@@ -1,6 +1,5 @@
+#pragma once
 
-#ifndef ASUSERINTERFACE_H
-#define ASUSERINTERFACE_H
 #include "ASDisplayDevice.h"
 #include <string>
 #include <fstream>
@@ -198,6 +197,3 @@ ASUserInterface::ASUserInterface()
 }
 ASUserInterface::~ASUserInterface()
 {}
-
-
-#endif

@@ -1,19 +1,13 @@
 #include <windows.h>
 #include "time.h"
-#include "ASDisplayDevice.h"
-#include "ASScreen.h"
-#include "ASFields.h"
-#include "ASParticles.h"
+#include "ASScene.h"
 #include "ASUserInterface.h"
-#include "ASEnvironment.h"
 
 //global objects
 ASDisplayDevice* g_displayDevice = ASDisplayDevice::GetInstance();
 typedef ASUserInterface g_ui;
-ASEnvironment*		g_env		;
-ASScreen*    g_screen	;
-ASFields*    g_fields	;
-ASParticles* g_particles ;
+ASEnvironment* g_env;
+ASScene* g_scene;
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLine, int nCmdShow);
@@ -72,16 +66,12 @@ int WINAPI wWinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdL
 
 
 	g_env = ASEnvironment::GetInstance();
-	g_screen = new ASScreen();
-	g_fields = new ASFields();
-	g_particles = new ASParticles();
+	g_scene = ASScene::GetInstance();
 
 	if (FAILED(g_displayDevice->InitViewport()))
 	{
 		g_displayDevice->Clear();
-		g_screen->Clear();
-		g_fields->Clear();
-		g_particles->Clear();
+		g_scene->Clear();
 		return 1;
 	}
 	g_displayDevice->CreateDepthStencilState();
@@ -89,21 +79,7 @@ int WINAPI wWinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdL
 	vector<std::string> buf;
 	buf = g_ui::GetUserFileBuffer();
 	g_env->InitWorld(buf);
-
-	g_screen->InitShaderResources(buf);
-	g_fields->InitShaderResources(buf);
-	g_particles->InitShaderResources(buf);
-
-	g_screen->InitViews();
-	g_fields->InitViews();
-	g_particles->InitViews();
-	g_screen->AddEffectResourceVariable(g_fields->GetMainRenderResource(), 2);
-	g_screen->AddEffectResourceVariable(g_particles->GetMainRenderResource(), 2);
-	g_screen->AddEffectResourceVariable(g_particles->GetInstanceRenderResource(), 2);
-
-	g_screen->InitBuffers();
-	g_fields->InitBuffers();
-	g_particles->InitBuffers();
+	g_scene->Init(buf);
 
     // Main message loop
     MSG msg = {0};
@@ -121,9 +97,7 @@ int WINAPI wWinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdL
     }
 	
 	g_displayDevice->Clear();
-	g_screen->Clear();
-	g_fields->Clear();
-	g_particles->Clear();
+	g_scene->Clear();
 
     return ( int )msg.wParam;
 }
@@ -131,12 +105,7 @@ int WINAPI wWinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdL
 void RenderFrame()
 {
 	g_env->PreFrame();
-	g_fields->PreRender();
-	g_displayDevice->SetShaderResources();
-	g_fields->Render();
-	g_particles->PreRender();
-	g_particles->Render();
-	g_screen->Render();
+	g_scene->Render();
 	g_env->PostFrame();
 
 	g_displayDevice->PresentSwapChain();

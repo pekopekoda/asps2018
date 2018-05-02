@@ -1,5 +1,6 @@
+#pragma once
+
 #include "ASSceneObject.h"
-#include "ASEnvironment.h"
 
 /*The screen is a square rendered in front of the camera. It is rendered through two passes.
 The first pass displays the other objects rendered in the scene as a texture and drops the render into a render texture.

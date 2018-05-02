@@ -1,7 +1,5 @@
-#ifndef ASENVIRONMENT_H
-#define ASENVIRONMENT_H
-#include <d3d10.h>
-#include <d3dx10.h>
+#pragma once
+
 #include <string>
 #include <fstream>
 #include "ASDisplayDevice.h"
@@ -423,4 +421,3 @@ ASEnvironment::ASEnvironment()
 	m_device = ASDisplayDevice::GetInstance();
 	m_fvTime.val = 0.0f;
 }
-#endif

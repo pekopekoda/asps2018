@@ -1,3 +1,4 @@
+#pragma once
 #include "ASSceneObject.h"
 
 class ASParticles : public ASSceneObject
@@ -309,6 +310,7 @@ void ASParticles::InitBuffers()
 //--------------------------------------------------------------------------------------
 void ASParticles::Render()
 {
+	m_device->ClearRenderTargetViews(m_pRenderTargetViews2D);
 	switch (m_env->userInput.currentKey)
 	{
 		case CHANGE_RATE: m_env->userInput.m_ivCurrentAction.val = CHANGE_RATE;	break;

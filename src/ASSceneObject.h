@@ -1,6 +1,5 @@
-#ifndef ASSceneObject_H
-#define ASSceneObject_H
-#include "ASDisplayDevice.h"
+#pragma once
+
 #include "ASEnvironment.h"
 #include "ASMesh.h"
 
@@ -143,8 +142,11 @@ public:
 	effectResourceVariable* GetMainRenderResource();
 	//Add extra resource to render from other objects
 	void AddEffectResourceVariable(effectResourceVariable* rr, int dimension);
-	void PreRender();
+	void ClearRenderTargetViews();
 	int Clear();
+
+	template<typename T>
+	HRESULT InitBuffers(vector<ID3D10Buffer*> vBuffers, vector<D3D10_INPUT_ELEMENT_DESC> layout, vector<T> vps, D3D10_BUFFER_DESC vbdesc);
 
 };
 
@@ -375,7 +377,7 @@ int ASSceneObject::Clear()
 	return 0;						 
 }
 
-void ASSceneObject::PreRender()
+void ASSceneObject::ClearRenderTargetViews()
 {
 	m_device->ClearRenderTargetViews(m_pRenderTargetViews2D);
 }
@@ -388,5 +390,3 @@ ASSceneObject::ASSceneObject()
 	m_pDepthStencilView1D = NULL;
 }
 ASSceneObject::~ASSceneObject(){}
-
-#endif
