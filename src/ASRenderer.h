@@ -3,7 +3,6 @@
 #include <d3d10.h>
 #include <d3dx10.h>
 #include <vector>
-#include <memory>
 #include <windows.h>
 #include<comdef.h>
 using namespace std;
@@ -506,9 +505,6 @@ ASRenderer::ASRenderer()
 }
 ASRenderer::~ASRenderer() {}
 
-
-
-
 ////////////////////////////////////////////////////////////////////////////////////////////
 //Generic constructors and typedef
 ////////////////////////////////////////////////////////////////////////////////////////////
@@ -622,6 +618,7 @@ public:
 	//val is the value to pass to the shader variable. it is updated during cpu runtime
 	T val;
 };
+
 class effectIntVariable : public effectScalarVariable<int>
 {
 public:
