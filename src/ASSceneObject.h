@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ASEnvironment.h"
+#include "ASRenderer.h"
 #include "ASMesh.h"
 
 #define MESH_PATH  "../Medias/Meshes/"
@@ -46,6 +46,8 @@
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////Abstract for objects to be rendered in the scene
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+ASRenderer *const ASSceneObject::RenderTechnique::m_renderer = ASRenderer::GetInstance();
 class ASSceneObject
 {
 protected:
@@ -56,6 +58,7 @@ protected:
 	class RenderTechnique
 	{
 	protected:
+		static ASRenderer *const m_renderer;
 		struct VERTEX_PROTOTYPE {}; //particle vertex properties
 		//Vertex buffer to draw from
 		ID3D10Buffer *m_firstBuffer;
@@ -68,10 +71,6 @@ protected:
 		ID3D10InputLayout		*m_layout;
 		//HLSL Render technique
 		ID3D10EffectTechnique	*m_technique;
-
-		//Handle to device singleton
-		ASDisplayDevice* m_device;
-
 
 		RenderTechnique();
 		//Each vertex buffer needs a layout prototype for the shader to interpret its raw data (eg. position, index)
@@ -122,19 +121,14 @@ protected:
 	int m_extra2DResourcesNbr;
 	int m_extra1DResourcesNbr;
 
-	ASDisplayDevice *m_device;
 	ASEnvironment   *m_env;
 	
-	renderTargetViews	 m_pRenderTargetViews2D;
-	renderTargetViews	 m_pRenderTargetViews1D;
-
-	ID3D10DepthStencilView*		 m_pDepthStencilView2D;
-	ID3D10DepthStencilView*		 m_pDepthStencilView1D;
-	
+	renderTargetViews m_pRenderTargetViews2D;
+	renderTargetViews m_pRenderTargetViews1D;
 	effectResourceVariable m_rrMainRenderResource;
 	
-	void InitViews(renderTargets2D &pRenderTargets2D, renderTargets1D &pRenderTargets1D);	
-	ASSceneObject();
+	void InitViews(vector<texture2D>& pRenderTargets2D, vector<texture1D>& pRenderTargets1D);
+	ASSceneObject(ASEnvironment *env);
 	~ASSceneObject();
 
 public:
@@ -174,29 +168,29 @@ void ASSceneObject::InstanceRenderTechnique::Init(const char *techniqueName, con
 	vbInitData2.pSysMem = m_instanceMesh.GetMeshVertexTab ();
 	vbInitData2.SysMemPitch = vertexSize;
 	
-	m_device->CreateBuffer(vbdesc2, vbInitData2, &m_firstBuffer);
+	m_renderer->CreateBuffer(vbdesc2, vbInitData2, &m_firstBuffer);
 	
 	vbInitData2.pSysMem = m_instanceMesh.GetMeshIndexTab ();
 	vbInitData2.SysMemPitch = indexSize;
 	vbdesc2.BindFlags = D3D10_BIND_INDEX_BUFFER;
 	vbdesc2.ByteWidth = indexSize * m_instanceMesh.GetIndexCount ();
-	m_device->CreateBuffer(vbdesc2, vbInitData2, &m_indexedBuffer);
+	m_renderer->CreateBuffer(vbdesc2, vbInitData2, &m_indexedBuffer);
 	m_instanceMesh.Clear();
 }
 
 void ASSceneObject::InstanceRenderTechnique::FirstPass()
 {
-	m_device->SetInputLayout(m_layout) ;
+	m_renderer->SetInputLayout(m_layout) ;
 	// Set IA parameters
 	ID3D10Buffer* pBuffers[2] = { m_firstBuffer, m_pInstancer->GetFirstBuffer() };
 	UINT stride[2] = { GetSizeOfVertexPrototype(), m_pInstancer->GetSizeOfVertexPrototype() };
 	UINT offset[2] = { 0, 0 };
-	m_device->SetVertexBuffers( 0, 2, pBuffers, stride, offset );
-	m_device->SetIndexBuffer(m_indexedBuffer, 0);
-	m_device->SetPrimitiveTopology();
+	m_renderer->SetVertexBuffers( 0, 2, pBuffers, stride, offset );
+	m_renderer->SetIndexBuffer(m_indexedBuffer, 0);
+	m_renderer->SetPrimitiveTopology();
 	// Draw
 	m_technique->GetPassByIndex(0)->Apply(0);
-	m_device->DrawInstance(m_instanceMesh.GetIndexCount(), m_instanceCount);
+	m_renderer->DrawInstance(m_instanceMesh.GetIndexCount(), m_instanceCount);
 }
 ASSceneObject::InstanceRenderTechnique::InstanceRenderTechnique(){}
 ASSceneObject::InstanceRenderTechnique::~InstanceRenderTechnique() {}
@@ -233,12 +227,11 @@ void ASSceneObject::RenderTechnique::SwapBuffers()
 }
 void ASSceneObject::RenderTechnique::Init(const char *techniqueName)
 {
-	m_device = ASDisplayDevice::GetInstance();
-	m_technique = m_device->GetTechniqueByName(techniqueName);
+	m_technique = m_renderer->GetTechniqueByName(techniqueName);
 	D3D10_PASS_DESC passDesc;
 	m_technique->GetPassByIndex(0)->GetDesc(&passDesc);
 	const vector<D3D10_INPUT_ELEMENT_DESC> proto = GetLayoutPrototype();
-	m_device->CreateInputLayout(GetLayoutPrototype() , passDesc, &m_layout);
+	m_renderer->CreateInputLayout(GetLayoutPrototype() , passDesc, &m_layout);
 }
 void ASSceneObject::RenderTechnique::Render() {}
 ASSceneObject::RenderTechnique::RenderTechnique()
@@ -256,22 +249,27 @@ ASSceneObject::RenderTechnique::~RenderTechnique()
 //
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void ASSceneObject::InitViews(renderTargets2D &pRenderTargets2D, renderTargets1D &pRenderTargets1D)
+void ASSceneObject::InitViews(vector<texture2D>& pRenderTargets2D, vector<texture1D>& pRenderTargets1D)
 {
 	UINT RT2DSize = pRenderTargets2D.size();
 	UINT RT1DSize = pRenderTargets1D.size();
 	if (RT2DSize)
 	{
-		m_pRenderTargetViews2D.assign(RT2DSize, NULL);
-		for (UINT i = 0; i < RT2DSize; i++)
+		for (auto tv : pRenderTargets2D)
+			m_pRenderTargetViews2D.AddRenderTargetView(tv);
+
+		auto itERV2D = m_vEffectResourceVariable2D.begin();
+		auto itRTV2D = m_pRenderTargetViews2D.begin();
+		for(auto pRT2D: pRenderTargets2D)
 		{
-			if(i<m_vEffectResourceVariable2D.size())
-				m_vEffectResourceVariable2D[i]->Set(pRenderTargets2D[i]);
-			m_device->CreateRenderTargetView2D(&pRenderTargets2D[i], &m_pRenderTargetViews2D[i]);
+			(*itERV2D)->Set(pRT2D);
+			(*itRTV2D)->Set(pRT2D);
+			itERV2D++;
+			itRTV2D++;
 		}
 		D3D10_TEXTURE2D_DESC pDesc2D;
 		pRenderTargets2D[0]->GetDesc(&pDesc2D);
-		m_device->CreateDepthStencilView2D(&m_pDepthStencilView2D, pDesc2D.Width, pDesc2D.Height);
+		m_renderer->CreateDepthStencilView2D(&m_pDepthStencilView2D, pDesc2D.Width, pDesc2D.Height);
 	}
 	if (RT1DSize)
 	{
@@ -280,11 +278,11 @@ void ASSceneObject::InitViews(renderTargets2D &pRenderTargets2D, renderTargets1D
 		{
 			if (i<m_vEffectResourceVariable1D.size())
 				m_vEffectResourceVariable1D[i]->Set(pRenderTargets1D[i]);
-			m_device->CreateRenderTargetView1D(&pRenderTargets1D[i], &m_pRenderTargetViews1D[i]);
+			m_renderer->CreateRenderTargetView1D(&pRenderTargets1D[i], &m_pRenderTargetViews1D[i]);
 		}
 		D3D10_TEXTURE1D_DESC pDesc1D;
 		pRenderTargets1D[0]->GetDesc(&pDesc1D);
-		m_device->CreateDepthStencilView1D(&m_pDepthStencilView1D, 50);
+		m_renderer->CreateDepthStencilView1D(&m_pDepthStencilView1D, 50);
 	}
 }
 
@@ -315,7 +313,7 @@ HRESULT ASSceneObject::InitBuffers(vector<ID3D10Buffer*> vBuffers, vector<D3D10_
 	D3D10_PASS_DESC PassDesc;
 	m_pRenderTechnique->GetPassByIndex(0)->GetDesc(&PassDesc);
 
-	hr = m_device->CreateInputLayout(layout, PassDesc, &m_pLayout);
+	hr = m_renderer->CreateInputLayout(layout, PassDesc, &m_pLayout);
 
 	D3D10_SUBRESOURCE_DATA vbInitData;
 	ZeroMemory(&vbInitData, sizeof(D3D10_SUBRESOURCE_DATA));
@@ -329,7 +327,7 @@ HRESULT ASSceneObject::InitBuffers(vector<ID3D10Buffer*> vBuffers, vector<D3D10_
 	for (vector<ID3D10Buffer*>::iterator it = vBuffers.begin(); it != vBuffers.end(); it++)
 	{
 		ID3D10Buffer *pBuffer = *it;
-		hr = m_device->CreateBuffer(vbdesc, vbInitData, &pBuffer);
+		hr = m_renderer->CreateBuffer(vbdesc, vbInitData, &pBuffer);
 		test(hr);
 	}
 
@@ -379,13 +377,12 @@ int ASSceneObject::Clear()
 
 void ASSceneObject::ClearRenderTargetViews()
 {
-	m_device->ClearRenderTargetViews(m_pRenderTargetViews2D);
+	m_renderer->ClearRenderTargetViews(m_pRenderTargetViews2D);
 }
 
-ASSceneObject::ASSceneObject()
+ASSceneObject::ASSceneObject(ASEnvironment *env)
 {
-	m_device = ASDisplayDevice::GetInstance();
-	m_env	 = ASEnvironment::GetInstance();
+	m_env	 = env;
 	m_pDepthStencilView2D = NULL;
 	m_pDepthStencilView1D = NULL;
 }
