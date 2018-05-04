@@ -35,7 +35,7 @@ public:
 	void Move(float x, float y, float z);
 	void SetRotation(float x, float y);
 	void Rotate(float x, float y);
-	void Update();
+	void Update(D3DXVECTOR2 cursorOffset, int mouseButton, float mouseWheelDelta);
 };
 
 D3DXVECTOR2 ASCamera::GetRotation()
@@ -97,8 +97,17 @@ void ASCamera::Reset()
 
 
 
-void ASCamera::Update()
+void ASCamera::Update(D3DXVECTOR2 cursorOffset, int mouseButton, float mouseWheelDelta)
 {
+	if (mouseButton == VK_RBUTTON)  //Mouse right button down
+		Rotate(cursorOffset.y*0.006f, cursorOffset.x*0.006f);
+	else if (mouseButton == VK_MBUTTON)  //Mouse middle button down
+		Move(cursorOffset.x*0.1f, -cursorOffset.y*0.1f, 0);
+	else if(mouseWheelDelta < 0.0f)
+		Move(0, 0, -13);
+	else if (mouseWheelDelta > 0.0f)
+		Move(0, 0, 13);
+
 	m_vUp = D3DXVECTOR3(0.0f, 1.0f, 0.0f);
 	m_vLook = D3DXVECTOR3(0.0f, 0.0f, 1.0f);
 	m_vRight = D3DXVECTOR3(1.0f, 0.0f, 0.0f);

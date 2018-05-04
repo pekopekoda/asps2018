@@ -741,6 +741,10 @@ class renderTargetViews: public shaderResource
 	vector<ID3D10RenderTargetView*> rts;
 	ID3D10DepthStencilView *m_dsv = nullptr;
 	
+	int Size()
+	{
+		return rts.size();
+	}
 	void CreateDepthStencilView1D(int width)
 	{
 		HRESULT hr;
@@ -847,7 +851,7 @@ public:
 	}
 	void Push(int idxSeparator = 0)
 	{
-		for (auto it=m_ervs.begin()+idxSeparator; it!=m_ervs.end(); it++)
+		for (auto it=m_ervs.end()-idxSeparator; it!=m_ervs.end(); it++)
 		{
 			(*it)->Push();
 		}

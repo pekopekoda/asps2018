@@ -2,6 +2,7 @@
 
 #include "ASDisplayDevice.h"
 #include <string>
+#include <tuple>
 #include <fstream>
 
 
@@ -34,18 +35,15 @@ User config file should contain the following keywords:
 
 class ASUserInterface
 {
-	ASUserInterface();
-	~ASUserInterface();
-
-	//effectMatrixVariable			d3dPickInfosVariable;				
-	//Used for key and mouse events											
-	int									currentNumberKey;					
-	bool								mouseReleased;//Used for 3D picking	
-	D3DXVECTOR2							mousePosition;						
-
-
 public:
-	static vector<string> GetUserFileBuffer();
+	static vector<tuple<string, string>> GetUserFileBuffer();
+	static int currentKey;
+	static bool keyReleased;
+	static D3DXVECTOR2 cursorPosition;
+	static D3DXVECTOR2 cursorOffset;
+	static float mouseWheelDelta;
+	static int mouseButton;
+	static bool mouseReleased;
 
 	static void MouseMoved(WPARAM wParam, LPARAM lParam);
 	static void LButtonDown();
@@ -55,36 +53,40 @@ public:
 	static bool GetInput(UINT message, WPARAM wParam, LPARAM lParam);
 	static void ProcessKeyInput(WPARAM wParam, bool mode);
 
+	effectIntVariable		m_bvIsMouseReleased;
+	effectFloatVariable		m_fvMouseWheelValue;
+	void InitInput();
+	void UpdateInput();
+	void ResetInput();
+
+	ASUserInterface();
+	~ASUserInterface();
 
 };
 
-vector<string> ASUserInterface::GetUserFileBuffer()
+vector<tuple<string, string>> ASUserInterface::GetUserFileBuffer()
 {
-	vector<string> vsBuf;
-	const char *separator = "==>";
-	UINT ccLength = 3;
+	vector<tuple<string, string>> vsBuf;
+	string delimiter = "==>";
 	//Read user interface text file////////////////////////////////////////////////////////////////////////
 	//This file is used by user to write extra parameters like gravity strength before program starts
 	ifstream fi(CONFIG_FILE);
 	string line = "";
 	string type, name, value;
-	size_t nameIdx, valueIdx;
 
+	size_t pos = 0;
+	string token;
 	string tmpBuf;
 	while (getline(fi, line))
 	{
 		tmpBuf = line;
-		nameIdx  = tmpBuf.find(separator) + ccLength;
-		tmpBuf.erase(0, nameIdx);
-		valueIdx = tmpBuf.find(separator) + ccLength;
-		tmpBuf.erase(0, valueIdx);
+		pos = tmpBuf.find(delimiter);
+		name = tmpBuf.substr(0, pos);
+		tmpBuf.erase(0, pos + delimiter.length());
+		pos = tmpBuf.find(delimiter);
+		value = tmpBuf.substr(0, pos);
 
-		type = line.substr(0, nameIdx-ccLength);
-		name = line.substr(nameIdx, valueIdx-ccLength);
-		value = tmpBuf;
-		vsBuf.push_back(type);
-		vsBuf.push_back(name);
-		vsBuf.push_back(value);
+		vsBuf.push_back((name, value));
 	}
 	fi.close();
 	return vsBuf;
@@ -95,19 +97,20 @@ vector<string> ASUserInterface::GetUserFileBuffer()
 ////--------------------------------------------------------------------------------------
 void ASUserInterface::MouseMoved(WPARAM wParam, LPARAM lParam)
 {
-	ASEnvironment *env = ASEnvironment::GetInstance();
 	float x = LOWORD(lParam);
 	float y = HIWORD(lParam);
 	float dx, dy;
 
-	dx = env->userInput.cursorPosition.x - x;
-	dy = env->userInput.cursorPosition.y - y;
-	env->userInput.cursorPosition = D3DXVECTOR2(x, y);
+	cursorOffset.x = cursorPosition.x - x;
+	cursorOffset.y = cursorPosition.y - y;
+	cursorPosition = D3DXVECTOR2(x, y);
+	mouseButton = wParam;
+
 	if (wParam == VK_RBUTTON)  //Mouse right button down
 	{
 		env->camera.Rotate(dy*0.006f, dx*0.006f);
 	}
-	else if (wParam == 16)  //Mouse middle button down
+	else if (wParam == VK_MBUTTON)  //Mouse middle button down
 	{
 		env->camera.Move(dx*0.1f, -dy*0.1f, 0);
 	}
@@ -119,37 +122,21 @@ void ASUserInterface::MouseMoved(WPARAM wParam, LPARAM lParam)
 
 void ASUserInterface::LButtonDown()
 {
-	ASEnvironment *env = ASEnvironment::GetInstance();
-	if (env->userInput.m_bvIsMouseReleased.val == 1)
+	if (mouseReleased)
 	{
-		env->userInput.currentKey = CLICK;
-		env->userInput.m_bvIsMouseReleased.Push(0);
+		mouseReleased = false;
+		currentKey = CLICK;
 	}
-	env->Picking3D();
 }
 
 void ASUserInterface::LButtonUp()
 {
-	ASEnvironment *env = ASEnvironment::GetInstance();
-	env->userInput.m_bvIsMouseReleased.Push(1);
+	mouseReleased = true;
 }
 
 void ASUserInterface::MouseWheel(WPARAM wParam)
 {
-	ASEnvironment *env = ASEnvironment::GetInstance();
-	if (GET_WHEEL_DELTA_WPARAM(wParam) < 0)
-	{
-		if (!env->userInput.m_ivCurrentAction.val)
-			env->camera.Move(0, 0, -13);
-		env->userInput.m_fvMouseWheelValue.Push(-3);
-	}
-	else
-	{
-		if (!env->userInput.m_ivCurrentAction.val)
-			env->camera.Move(0, 0, 13);
-		env->userInput.m_fvMouseWheelValue.Push(3);
-	}
-	env->Picking3D();
+	mouseWheelDelta = GET_WHEEL_DELTA_WPARAM(wParam);
 }
 
 bool ASUserInterface::GetInput(UINT message, WPARAM wParam, LPARAM lParam)
@@ -185,12 +172,37 @@ bool ASUserInterface::GetInput(UINT message, WPARAM wParam, LPARAM lParam)
 ////--------------------------------------------------------------------------------------
 void ASUserInterface::ProcessKeyInput(WPARAM wParam, bool mode)
 {
-	ASEnvironment *env = ASEnvironment::GetInstance();
-	env->userInput.currentKey = wParam;
-	env->userInput.keyReleased = mode;
-
+	currentKey = wParam;
+	keyReleased = mode;
 }
 
+void ASUserInterface::InitInput()
+{
+	mouseReleased = true;
+	currentKey = 0;
+
+	m_fvMouseWheelValue = effectFloatVariable("g_plusMinus");
+	m_fvMouseWheelValue.Push(0.0f);
+	m_bvIsMouseReleased = effectIntVariable("g_released");
+	m_bvIsMouseReleased.Push(1);
+}
+
+void ASUserInterface::UpdateInput()
+{
+	if (mouseWheelDelta < 0.0f)
+		m_fvMouseWheelValue.Push(-3);
+	else
+		m_fvMouseWheelValue.Push(3);
+	m_bvIsMouseReleased.Push(float(mouseReleased));
+}
+
+void ASUserInterface::ResetInput()
+{
+	currentKey = 0;
+	mouseWheelDelta = 0.0f;
+	m_fvMouseWheelValue.Push(0.0f);
+
+}
 ASUserInterface::ASUserInterface()
 {
 	

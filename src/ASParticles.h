@@ -1,4 +1,5 @@
 #pragma once
+#include <tuple>
 #include "ASSceneObject.h"
 
 constexpr char* g_pmeshCfg = "Particle mesh";
@@ -10,68 +11,29 @@ constexpr uint8_t g_changeRate = 82; //Particle emission per second
 
 class ASParticles : public ASSceneObject
 {
-	class ParticlesRenderTechnique: public RenderTechnique
+	struct VERTEX_PROTOTYPE//particle vertex properties
 	{
-		struct VERTEX_PROTOTYPE//particle vertex properties
-		{
-			D3DXVECTOR3 pos     ;
-			D3DXVECTOR3 vel     ;
-			UINT		type	;
-			float		lifespan;
-			float		birth	;
-			float		mass	;
-		};
-
-		inline const vector<D3D10_INPUT_ELEMENT_DESC> GetLayoutPrototype()
-		{
-			return
-			{
-				{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D10_INPUT_PER_VERTEX_DATA, 0 },
-				{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D10_INPUT_PER_VERTEX_DATA, 0 },
-				{ "TYPE", 0, DXGI_FORMAT_R32_UINT, 0, 24, D3D10_INPUT_PER_VERTEX_DATA, 0 },
-				{ "TIMER", 0, DXGI_FORMAT_R32_FLOAT, 0, 28, D3D10_INPUT_PER_VERTEX_DATA, 0 },
-				{ "BIRTH", 0, DXGI_FORMAT_R32_FLOAT, 0, 32, D3D10_INPUT_PER_VERTEX_DATA, 0 },
-				{ "MASS", 0, DXGI_FORMAT_R32_FLOAT, 0, 36, D3D10_INPUT_PER_VERTEX_DATA, 0 },
-			};
-		}
-		ID3D10Buffer *m_bufferStart;
-
-	public:
-		UINT GetSizeOfVertexPrototype();
-		void Init(const char *techniqueName, UINT nbr);
-		void FirstPass(bool isFirstFrame = false);
-		void SecondPass();
+		D3DXVECTOR3 pos;
+		D3DXVECTOR3 vel;
+		UINT		type;
+		float		lifespan;
+		float		birth;
+		float		mass;
 	};
 
-	class ParticlesInstanceRenderTechnique : public InstanceRenderTechnique
+	inline const vector<D3D10_INPUT_ELEMENT_DESC> GetLayoutPrototype()
 	{
-		struct VERTEX_PROTOTYPE//particle vertex properties
+		return
 		{
-				D3DXVECTOR3 position;
-				D3DXVECTOR3 normal;
-				D3DXVECTOR2 UV;
+			{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D10_INPUT_PER_VERTEX_DATA, 0 },
+			{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D10_INPUT_PER_VERTEX_DATA, 0 },
+			{ "TYPE", 0, DXGI_FORMAT_R32_UINT, 0, 24, D3D10_INPUT_PER_VERTEX_DATA, 0 },
+			{ "TIMER", 0, DXGI_FORMAT_R32_FLOAT, 0, 28, D3D10_INPUT_PER_VERTEX_DATA, 0 },
+			{ "BIRTH", 0, DXGI_FORMAT_R32_FLOAT, 0, 32, D3D10_INPUT_PER_VERTEX_DATA, 0 },
+			{ "MASS", 0, DXGI_FORMAT_R32_FLOAT, 0, 36, D3D10_INPUT_PER_VERTEX_DATA, 0 },
 		};
-	public:
-		UINT GetSizeOfVertexPrototype();
-		const vector<D3D10_INPUT_ELEMENT_DESC> GetLayoutPrototype()
-		{
-			return
-			{
-				{ "POSITION", 1, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0,  D3D10_INPUT_PER_VERTEX_DATA,   0 },
-				{ "NORMAL"  , 1, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D10_INPUT_PER_VERTEX_DATA,   0 },
-				{ "TEXCOORD", 1, DXGI_FORMAT_R32G32_FLOAT   , 0, 24, D3D10_INPUT_PER_VERTEX_DATA,   0 },
-				{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 1, 0,  D3D10_INPUT_PER_INSTANCE_DATA, 1 },
-				{ "NORMAL"  , 0, DXGI_FORMAT_R32G32B32_FLOAT, 1, 12, D3D10_INPUT_PER_INSTANCE_DATA, 1 },
-				{ "TYPE"    , 0, DXGI_FORMAT_R32_UINT,		  1, 24, D3D10_INPUT_PER_INSTANCE_DATA, 1 },
-				{ "TIMER"   , 0, DXGI_FORMAT_R32_FLOAT,		  1, 28, D3D10_INPUT_PER_INSTANCE_DATA, 1 },
-				{ "BIRTH"   , 0, DXGI_FORMAT_R32_FLOAT,		  1, 32, D3D10_INPUT_PER_INSTANCE_DATA, 1 },
-				{ "MASS"    , 0, DXGI_FORMAT_R32_FLOAT,		  1, 36, D3D10_INPUT_PER_INSTANCE_DATA, 1 },
-			};
-		}
-	};
+	}
 
-	ParticlesRenderTechnique m_updateRenderTechnique;
-	ParticlesInstanceRenderTechnique m_renderInstanceTechnique;
 	effectResourceVariable m_rrParticlesVelocity;
 	effectResourceVariable m_rrBump;
 	effectResourceVariable m_rrDiffuse;
@@ -79,7 +41,7 @@ class ASParticles : public ASSceneObject
 
 	bool m_isFirstFrame;
 	float m_fLastEmittedTime;
-	UINT m_maxParticles  = 2000;
+	UINT m_maxParticles = 2000;
 	float m_rateVariation = 0.1f * float(m_maxParticles);
 
 	string m_meshPath;
@@ -99,36 +61,70 @@ class ASParticles : public ASSceneObject
 	effectFloatVariable m_fvRandZ;
 	effectFloatVariable m_fvRate;
 	effectFloatVariable m_fvTimeToNextEmit;
-
-	~ASParticles();
+	ID3D10Buffer *m_bufferStart;
 
 public:
-	effectResourceVariable *GetInstanceRenderResource();
-	void InitShaderResources(vector<string> vsBuf);
+	UINT GetSizeOfVertexPrototype();
+	void Init(const char *techniqueName, UINT nbr);
+	void FirstPass(bool isFirstFrame = false);
+	void SecondPass();
+
+	void InitShaderResources(vector<tuple<string, string>> vsBuf);
 	void InitViews();
 	void InitShaders();
 	void InitBuffers();
 	void Render();
 	void Clear();
 	ASParticles();
+	~ASParticles();
 };
 
-UINT ASParticles::ParticlesInstanceRenderTechnique::GetSizeOfVertexPrototype()
+
+class ASParticlesInstances: public ASSceneInstance
+{
+	struct VERTEX_PROTOTYPE//particle vertex properties
+	{
+		D3DXVECTOR3 position;
+		D3DXVECTOR3 normal;
+		D3DXVECTOR2 UV;
+	};
+public:
+	UINT GetSizeOfVertexPrototype();
+	const vector<D3D10_INPUT_ELEMENT_DESC> GetLayoutPrototype()
+	{
+		return
+		{
+			{ "POSITION", 1, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0,  D3D10_INPUT_PER_VERTEX_DATA,   0 },
+			{ "NORMAL"  , 1, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D10_INPUT_PER_VERTEX_DATA,   0 },
+			{ "TEXCOORD", 1, DXGI_FORMAT_R32G32_FLOAT   , 0, 24, D3D10_INPUT_PER_VERTEX_DATA,   0 },
+			{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 1, 0,  D3D10_INPUT_PER_INSTANCE_DATA, 1 },
+			{ "NORMAL"  , 0, DXGI_FORMAT_R32G32B32_FLOAT, 1, 12, D3D10_INPUT_PER_INSTANCE_DATA, 1 },
+			{ "TYPE"    , 0, DXGI_FORMAT_R32_UINT,		  1, 24, D3D10_INPUT_PER_INSTANCE_DATA, 1 },
+			{ "TIMER"   , 0, DXGI_FORMAT_R32_FLOAT,		  1, 28, D3D10_INPUT_PER_INSTANCE_DATA, 1 },
+			{ "BIRTH"   , 0, DXGI_FORMAT_R32_FLOAT,		  1, 32, D3D10_INPUT_PER_INSTANCE_DATA, 1 },
+			{ "MASS"    , 0, DXGI_FORMAT_R32_FLOAT,		  1, 36, D3D10_INPUT_PER_INSTANCE_DATA, 1 },
+		};
+	}
+	void InitBuffers();
+};
+
+
+UINT ASParticles::GetSizeOfVertexPrototype()
 {
 	return sizeof(VERTEX_PROTOTYPE);
 }
 
-
-UINT ASParticles::ParticlesRenderTechnique::GetSizeOfVertexPrototype()
-{
-	return sizeof(VERTEX_PROTOTYPE);
-}
-
-void ASParticles::ParticlesRenderTechnique::Init(const char *techniqueName, UINT nbr)
+void ASParticles::Init(const char *techniqueName, UINT nbr)
 {
 	m_firstBuffer = NULL;
 	m_secondBuffer = NULL;
-	ASSceneObject::RenderTechnique::Init(techniqueName);
+	
+	m_technique = m_renderer->GetTechniqueByName(techniqueName);
+	D3D10_PASS_DESC passDesc;
+	m_technique->GetPassByIndex(0)->GetDesc(&passDesc);
+	const vector<D3D10_INPUT_ELEMENT_DESC> proto = GetLayoutPrototype();
+	m_renderer->CreateInputLayout(GetLayoutPrototype(), passDesc, &m_layout);
+
 	VERTEX_PROTOTYPE vp1;
 	vector<VERTEX_PROTOTYPE> vps;
 	vps.assign(1, vp1);
@@ -158,18 +154,18 @@ void ASParticles::ParticlesRenderTechnique::Init(const char *techniqueName, UINT
 	vbInitData.SysMemPitch = _size;
 	vbInitData.SysMemSlicePitch = _size;
 	//Buffer creation
-	m_device->CreateBuffer(vbdesc, vbInitData, &m_bufferStart);
+	m_renderer->CreateBuffer(vbdesc, vbInitData, &m_bufferStart);
 
 	vbdesc.ByteWidth = nbr * vertSize;
 	vbdesc.BindFlags |= D3D10_BIND_STREAM_OUTPUT;
-	m_device->CreateBuffer(vbdesc, &m_firstBuffer);
-	m_device->CreateBuffer(vbdesc, &m_secondBuffer);
+	m_renderer->CreateBuffer(vbdesc, &m_firstBuffer);
+	m_renderer->CreateBuffer(vbdesc, &m_secondBuffer);
 	m_vBuffers = { m_bufferStart, m_firstBuffer , m_secondBuffer };
 }
 
-void ASParticles::ParticlesRenderTechnique::FirstPass(bool isFirstFrame)
+void ASParticles::FirstPass(bool isFirstFrame)
 {
-	m_device->SetInputLayout(m_layout);
+	m_renderer->SetInputLayout(m_layout);
 	ID3D10Buffer* pBuffers[1];
 	if (isFirstFrame)
 		pBuffers[0] = m_bufferStart;
@@ -177,110 +173,88 @@ void ASParticles::ParticlesRenderTechnique::FirstPass(bool isFirstFrame)
 		pBuffers[0] = m_firstBuffer;
 	UINT stride[1] = { sizeof(VERTEX_PROTOTYPE) };
 	UINT offset[1] = { 0 };
-	m_device->SetVertexBuffers(0, 1, pBuffers, stride, offset);
-	m_device->SetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY_POINTLIST);
+	m_renderer->SetVertexBuffers(0, 1, pBuffers, stride, offset);
+	m_renderer->SetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY_POINTLIST);
 
 	// Point to the correct output buffer
 	pBuffers[0] = m_secondBuffer;
-	m_device->StreamOutputSetTargets(1, pBuffers, offset);
+	m_renderer->StreamOutputSetTargets(1, pBuffers, offset);
 	// Draw
 	D3D10_TECHNIQUE_DESC techDesc;
 	m_technique->GetDesc(&techDesc);
 	m_technique->GetPassByIndex(0)->Apply(0);
 	if (isFirstFrame)
-		m_device->Draw(1);
+		m_renderer->Draw(1);
 	else
-		m_device->Draw();
+		m_renderer->Draw();
 
 	// Get back to normal
 	pBuffers[0] = NULL;
-	m_device->StreamOutputSetTargets(1, pBuffers, offset);
+	m_renderer->StreamOutputSetTargets(1, pBuffers, offset);
 }
 
-inline effectResourceVariable * ASParticles::GetInstanceRenderResource()
-{
-	return &m_rrParticlesVelocity;
-}
 
-void ASParticles::InitShaderResources(vector<string> vsBuf)
+void ASParticles::InitShaderResources(vector<tuple<string, string>> vsBuf)
 {
-	//m_pUpdateRenderTechnique= m_device->GetTechniqueByName("UpdateParticles");
-	//m_pRenderTechnique		= m_device->GetTechniqueByName("RenderParticles");
+	//m_pUpdateRenderTechnique= m_renderer->GetTechniqueByName("UpdateParticles");
+	//m_pRenderTechnique		= m_renderer->GetTechniqueByName("RenderParticles");
 	effectIntVariable m_rrMaxParticles = effectIntVariable("g_maxParticles");
-	m_rrMainRenderResource  = effectResourceVariable("txParticles");
-	m_rrParticlesVelocity	= effectResourceVariable("txParticlesParam");
-	m_rrBump				= effectResourceVariable("txBump");
-	m_rrDiffuse				= effectResourceVariable("txDiffuse");
-	m_rrRampColor			= effectResourceVariable("txRamp");
+	m_rrMainRenderResource = effectResourceVariable("txParticles");
+	m_rrParticlesVelocity = effectResourceVariable("txParticlesParam");
+	m_rrBump = effectResourceVariable("txBump");
+	m_rrDiffuse = effectResourceVariable("txDiffuse");
+	m_rrRampColor = effectResourceVariable("txRamp");
 
-	m_fvRandX				= effectFloatVariable("g_randX");
-	m_fvRandY				= effectFloatVariable("g_randY");
-	m_fvRandZ				= effectFloatVariable("g_randZ");
-	m_fvRate				= effectFloatVariable("g_rate");
-	m_fvTimeToNextEmit		= effectFloatVariable("g_timeToNextEmit");
+	m_fvRandX = effectFloatVariable("g_randX");
+	m_fvRandY = effectFloatVariable("g_randY");
+	m_fvRandZ = effectFloatVariable("g_randZ");
+	m_fvRate = effectFloatVariable("g_rate");
+	m_fvTimeToNextEmit = effectFloatVariable("g_timeToNextEmit");
 
-	m_bvColor				= effectIntVariable("g_color");
-	m_bvTexture				= effectIntVariable("g_tex");
-	m_bvToon				= effectIntVariable("g_toon");
-	m_bvDiffuseAndSpec		= effectIntVariable("g_diffSpec");
-	m_bvBump				= effectIntVariable("g_bump");
+	m_bvColor = effectIntVariable("g_color");
+	m_bvTexture = effectIntVariable("g_tex");
+	m_bvToon = effectIntVariable("g_toon");
+	m_bvDiffuseAndSpec = effectIntVariable("g_diffSpec");
+	m_bvBump = effectIntVariable("g_bump");
 
-
-	for (vector<string>::iterator it = vsBuf.begin(); it != vsBuf.end(); it++)
+	for (auto it = vsBuf.begin(); it != vsBuf.end(); it++)
 	{
-		if ((*it) != "P")
+		string name = std::get<0>(*it);
+		string value = std::get<1>(*it);
+
+		if(name == g_pmeshCfg)
 		{
-			it += 2;
+			m_meshPath = MESH_PATH + value;
 		}
-		else
+		else if (name == g_ptexCfg)
 		{
-			it++;
-			if ((*it) == g_pmeshCfg)
-			{
-				it++;
-				m_meshPath = MESH_PATH + (*it);
-			}
-			else if ((*it) == g_ptexCfg)
-			{
-				{
-					it++;
-					string txtPath  = TEXTURE_PATH + (*it);
-					string bumpPath = TEXTURE_PATH + string("NM_") + (*it);
-					m_rrBump.SetFromFile(txtPath.c_str());
-					m_rrBump.Push();
-					m_rrDiffuse.SetFromFile(txtPath.c_str());
-					m_rrDiffuse.Push();
+			string txtPath = TEXTURE_PATH + value;
+			string bumpPath = TEXTURE_PATH + string("NM_") + value;
+			m_rrBump.SetFromFile(txtPath.c_str());
+			m_rrBump.Push();
+			m_rrDiffuse.SetFromFile(txtPath.c_str());
+			m_rrDiffuse.Push();
 
-					m_vConstResourceVariable2D.push_back(&m_rrBump);
-					m_vConstResourceVariable2D.push_back(&m_rrDiffuse);
-				}
-			}
-			else if ((*it) == g_prampCfg)
-			{
-				{
-					it++;
-					string rampPath = TEXTURE_PATH + (*it);
-					m_rrRampColor.SetFromFile(rampPath.c_str());
-					m_rrRampColor.Push();
+			m_vConstResourceVariable.Add(&m_rrBump);
+			m_vConstResourceVariable.Add(&m_rrDiffuse);
+		}
+		else if(name == g_prampCfg)
+		{
+			string rampPath = TEXTURE_PATH + value;
+			m_rrRampColor.SetFromFile(rampPath.c_str());
+			m_rrRampColor.Push();
 
-					m_vConstResourceVariable2D.push_back(&m_rrRampColor);
-				}
-			}
-			else if ((*it) == g_pnbrCfg)
-			{
-				{
-					it++;
-					m_rrMaxParticles.Push(atoi((*it).c_str()));
-					m_fvRate.Push(0.1f * float(m_maxParticles));
-				}
-			}
-			else
-				it++;
+			m_vConstResourceVariable.Add(&m_rrRampColor);
+		}
+		else if (name == g_pnbrCfg)
+		{
+			m_rrMaxParticles.Push(atoi(value.c_str()));
+			m_fvRate.Push(0.1f * float(m_maxParticles));
 		}
 	}
 	
-	m_vEffectResourceVariable2D.push_back(&m_rrMainRenderResource);
-	m_vEffectResourceVariable2D.push_back(&m_rrParticlesVelocity);
+	m_vEffectResourceVariable2D.Add(&m_rrMainRenderResource);
+	m_vEffectResourceVariable2D.Add(&m_rrParticlesVelocity);
 
 	m_fLastEmittedTime = 0.0f;
 	m_fvTimeToNextEmit.Push(0.0f);
@@ -294,13 +268,14 @@ void ASParticles::InitShaderResources(vector<string> vsBuf)
 
 void ASParticles::InitViews()
 {
-	renderTargets2D pRenderTargets2D(m_vEffectResourceVariable2D.size(), NULL);
-	renderTargets1D pRenderTargets1D;
-	m_device->CreateTextures2D(pRenderTargets2D);
+
+	textures2D pRenderTargets2D(m_vEffectResourceVariable2D.Size());
+	for (auto t : pRenderTargets2D)
+		t = texture2D();
 
 	int views2DNbr = pRenderTargets2D.size();
 
-	ASSceneObject::InitViews(pRenderTargets2D, pRenderTargets1D);
+	ASSceneObject::InitViews(pRenderTargets2D);
 
 	for (int i = 0; i < views2DNbr; i++)
 		pRenderTargets2D[i]->Release();
@@ -308,8 +283,7 @@ void ASParticles::InitViews()
 
 void ASParticles::InitBuffers()
 {
-	m_updateRenderTechnique.Init("UpdateParticles", m_maxParticles + 1);
-	m_renderInstanceTechnique.Init("RenderParticles", m_meshPath.c_str(), m_maxParticles + 1, &m_updateRenderTechnique);
+	Init("UpdateParticles", m_maxParticles + 1);
 }   
 
 //--------------------------------------------------------------------------------------
@@ -317,7 +291,7 @@ void ASParticles::InitBuffers()
 //--------------------------------------------------------------------------------------
 void ASParticles::Render()
 {
-	m_device->ClearRenderTargetViews(m_pRenderTargetViews2D);
+	m_pRenderTargetViews2D.ClearRenderTargets();
 	switch (m_env->userInput.currentKey)
 	{
 		case g_changeRate: m_env->userInput.m_ivCurrentAction.val = g_changeRate;	break;
@@ -350,18 +324,15 @@ void ASParticles::Render()
 	m_fvRandY.Push(RAND(-_rand, _rand));
 	m_fvRandX.Push(RAND(-_rand, _rand));
 
-	m_device->ClearDepthStencilView(m_pDepthStencilView2D);
-	m_device->SetRenderTargets(m_pRenderTargetViews2D, m_pDepthStencilView2D);
-	m_updateRenderTechnique.FirstPass(m_isFirstFrame);
-	m_updateRenderTechnique.SwapBuffers();
-
-	m_renderInstanceTechnique.FirstPass();
+	m_pRenderTargetViews2D.ClearDepthStencilView();
+	m_pRenderTargetViews2D.SetRenderTargets();
+	FirstPass(m_isFirstFrame);
+	SwapBuffers();
 
 	m_isFirstFrame = false;
+
+	//TODO call instances first pass
 }
 
-void ASParticles::Clear()
-{
-}
-
+void ASParticles::Clear(){}
 ASParticles::ASParticles(): m_isFirstFrame(true){}
