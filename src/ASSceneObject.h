@@ -6,42 +6,6 @@
 #define MESH_PATH  "../Medias/Meshes/"
 #define TEXTURE_PATH  "../Medias/Textures/"
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-////FIELDS MACROS
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-#define MAX_FIELDS 50		//number of fields in program
-// Used with interface input query to warn program user may change currently picked field's parameters, or about different events :
-#define CHANGE_TYPE					0x54		// type may be changed
-#define CHANGE_SIZE					0x53		// size may be changed
-#define CHANGE_CENTER_FORCE			0x43		// center force may be changed
-#define CHANGE_EXTREMITY_FORCE		0x58		// extremity force may be changed
-#define CHANGE_INTERPOLATION		0x49		// interpolation may be changed
-#define ADD_FIELDS					107			// Increase the current fields number
-#define SUB_FIELDS					109			// Decrease the current fields number
-#define SWITCH_VISIBILITY			0x48		// visibillity on/off
-#define FNBR_CFG "Fields initial number"
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-////PARTICLES MACROS
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-#define PMESH_CFG "Particle mesh"
-#define PTEX_CFG  "Particle texture"
-#define PRAMP_CFG "Particle ramp color"
-#define PNBR_CFG  "Particle number"
-#define CHANGE_RATE 82							//Particle emission per second
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-////SCREEN MACROS
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Used with interface input query to warn program user may change currently picked field's parameters, or about different events :
-#define SHADER_COLOR	97 //1   key	for color on particles
-#define SHADER_TEXTURE	98 //2   key	for texture on particles
-#define SHADER_TOON		99 //3   key	for toon on particles
-#define SHADER_DIFFUSE	100//4   key	for diffuse and specular on particles
-#define SHADER_BUMP		101//5   key	for bump on particles
-#define	SHADER_DOF		102//6   key	for Depth on field on particles
-#define SHADER_GLOW		103//7   key	for glow on particles
-#define SENVMAP_CFG		"Environment map"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////Abstract for objects to be rendered in the scene
@@ -112,10 +76,10 @@ protected:
 		~InstanceRenderTechnique();
 	};
 	//Handle to all the effect resource variables needed to render the object
-	vector<effectResourceVariable*> m_vEffectResourceVariable2D;
-	vector<effectResourceVariable*> m_vEffectResourceVariable1D;
-	vector<effectResourceVariable*> m_vConstResourceVariable2D;
-	vector<effectResourceVariable*> m_vConstResourceVariable1D;
+	effectResourceVariables m_vEffectResourceVariable2D;
+	effectResourceVariables m_vEffectResourceVariable1D;
+	effectResourceVariables m_vConstResourceVariable2D;
+	effectResourceVariables m_vConstResourceVariable1D;
 	//As Some objects (screen) need resource variables from other objects extraresourcenbr
 	//stores the offset in the resource variable vector
 	int m_extra2DResourcesNbr;
@@ -127,7 +91,8 @@ protected:
 	renderTargetViews m_pRenderTargetViews1D;
 	effectResourceVariable m_rrMainRenderResource;
 	
-	void InitViews(vector<texture2D>& pRenderTargets2D, vector<texture1D>& pRenderTargets1D);
+	void InitViews(textures1D& pRenderTargets1D);
+	void InitViews(textures2D& pRenderTargets2D);
 	ASSceneObject(ASEnvironment *env);
 	~ASSceneObject();
 
@@ -238,8 +203,8 @@ ASSceneObject::RenderTechnique::RenderTechnique()
 {}
 ASSceneObject::RenderTechnique::~RenderTechnique()
 {
-	for (vector<ID3D10Buffer*>::iterator it = m_vBuffers.begin(); it != m_vBuffers.end(); it++)
-		(*it)->Release();
+	for (auto b: m_vBuffers)
+		b->Release();
 	m_vBuffers.clear();
 }
 
@@ -249,41 +214,23 @@ ASSceneObject::RenderTechnique::~RenderTechnique()
 //
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void ASSceneObject::InitViews(vector<texture2D>& pRenderTargets2D, vector<texture1D>& pRenderTargets1D)
-{
-	UINT RT2DSize = pRenderTargets2D.size();
-	UINT RT1DSize = pRenderTargets1D.size();
-	if (RT2DSize)
-	{
-		for (auto tv : pRenderTargets2D)
-			m_pRenderTargetViews2D.AddRenderTargetView(tv);
 
-		auto itERV2D = m_vEffectResourceVariable2D.begin();
-		auto itRTV2D = m_pRenderTargetViews2D.begin();
-		for(auto pRT2D: pRenderTargets2D)
-		{
-			(*itERV2D)->Set(pRT2D);
-			(*itRTV2D)->Set(pRT2D);
-			itERV2D++;
-			itRTV2D++;
-		}
-		D3D10_TEXTURE2D_DESC pDesc2D;
-		pRenderTargets2D[0]->GetDesc(&pDesc2D);
-		m_renderer->CreateDepthStencilView2D(&m_pDepthStencilView2D, pDesc2D.Width, pDesc2D.Height);
-	}
-	if (RT1DSize)
-	{
-		m_pRenderTargetViews1D.assign(RT1DSize, NULL);
-		for (UINT i = 0; i < RT1DSize; i++)
-		{
-			if (i<m_vEffectResourceVariable1D.size())
-				m_vEffectResourceVariable1D[i]->Set(pRenderTargets1D[i]);
-			m_renderer->CreateRenderTargetView1D(&pRenderTargets1D[i], &m_pRenderTargetViews1D[i]);
-		}
-		D3D10_TEXTURE1D_DESC pDesc1D;
-		pRenderTargets1D[0]->GetDesc(&pDesc1D);
-		m_renderer->CreateDepthStencilView1D(&m_pDepthStencilView1D, 50);
-	}
+void  ASSceneObject::InitViews(textures1D& pRenderTargets1D)
+{
+	for (auto tv : pRenderTargets1D)
+		m_pRenderTargetViews1D.AddRenderTargetView(tv);
+	
+	m_pRenderTargetViews1D.SetRenderTargets();
+	m_vEffectResourceVariable1D.Set(pRenderTargets1D);
+}
+
+void  ASSceneObject::InitViews(textures2D& pRenderTargets2D)
+{
+	for (auto tv : pRenderTargets2D)
+		m_pRenderTargetViews2D.AddRenderTargetView(tv);
+
+	m_pRenderTargetViews2D.SetRenderTargets();
+	m_vEffectResourceVariable2D.Set(pRenderTargets2D);
 }
 
 effectResourceVariable *ASSceneObject::GetMainRenderResource()
@@ -336,54 +283,23 @@ HRESULT ASSceneObject::InitBuffers(vector<ID3D10Buffer*> vBuffers, vector<D3D10_
 
 int ASSceneObject::Clear()
 {
-	if (m_pDepthStencilView2D ) m_pDepthStencilView2D->Release();
-	if (m_pDepthStencilView1D)  m_pDepthStencilView1D->Release();
+	m_pRenderTargetViews1D.Release();
+	m_pRenderTargetViews2D.Release();
 
-	for (renderTargetViews::iterator it = m_pRenderTargetViews2D.begin(); it != m_pRenderTargetViews2D.end(); ++it)
-	{
-		if ((*it) != NULL)
-			(*it)->Release();
-	}m_pRenderTargetViews2D.clear();
-
-	for (renderTargetViews::iterator it = m_pRenderTargetViews1D.begin(); it != m_pRenderTargetViews1D.end(); ++it)
-	{
-		if ((*it) != NULL)
-			(*it)->Release();
-	}m_pRenderTargetViews1D.clear();
-
-	for (vector<effectResourceVariable*>::iterator it = m_vEffectResourceVariable2D.begin(); it != m_vEffectResourceVariable2D.end(); ++it)
-	{
-		(*it)->Release();
-	}m_vEffectResourceVariable2D.clear();
-
-	for (vector<effectResourceVariable*>::iterator it = m_vEffectResourceVariable1D.begin(); it != m_vEffectResourceVariable1D.end(); ++it)
-	{
-		(*it)->Release();
-	}m_vEffectResourceVariable1D.clear();
-
-	for (vector<effectResourceVariable*>::iterator it = m_vConstResourceVariable2D.begin(); it != m_vConstResourceVariable2D.end(); ++it)
-	{
-		(*it)->Release();
-	}m_vConstResourceVariable2D.clear();
-
-	for (vector<effectResourceVariable*>::iterator it = m_vConstResourceVariable1D.begin(); it != m_vConstResourceVariable1D.end(); ++it)
-	{
-		(*it)->Release();
-	}m_vConstResourceVariable1D.clear();
-
+	m_vEffectResourceVariable1D.Release();
+	m_vEffectResourceVariable2D.Release();
+	m_vConstResourceVariable1D.Release();
 
 	return 0;						 
 }
 
 void ASSceneObject::ClearRenderTargetViews()
 {
-	m_renderer->ClearRenderTargetViews(m_pRenderTargetViews2D);
+	m_pRenderTargetViews2D.ClearRenderTargets();
 }
 
 ASSceneObject::ASSceneObject(ASEnvironment *env)
 {
 	m_env	 = env;
-	m_pDepthStencilView2D = NULL;
-	m_pDepthStencilView1D = NULL;
 }
 ASSceneObject::~ASSceneObject(){}

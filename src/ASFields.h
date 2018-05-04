@@ -2,6 +2,21 @@
 
 #include "ASSceneObject.h"
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+constexpr uint8_t g_maxFields = 50;				//number of fields in program
+// The following are used with interface input query to warn the program that the user may change the parameters of the currenlty selected field
+//or about different other events
+constexpr uint8_t g_changeType = 0x54;			// type may be changed
+constexpr uint8_t g_changeSize = 0x53;			// size may be changed
+constexpr uint8_t g_changeCenterForce = 0x43;	// center force may be changed
+constexpr uint8_t g_changeExtremityForce = 0x58;// extremity force may be changed
+constexpr uint8_t g_changeInterpolation = 0x49;	// interpolation may be changed
+constexpr uint8_t g_addFields = 107;			// Increase the current fields number
+constexpr uint8_t g_subFields = 109;			// Decrease the current fields number
+constexpr uint8_t g_switchVisibility = 0x48;	// visibillity on/off
+constexpr char*	  g_FieldnbrCfg = "Fields initial number";
+
+
 class ASFields : public ASSceneObject
 {
 	class FieldsRenderTechnique : public ASSceneObject::RenderTechnique
@@ -98,12 +113,12 @@ public:
 void ASFields::FieldsRenderTechnique::Init(const char *techniqueName)
 {
 	ASSceneObject::RenderTechnique::Init(techniqueName);
-	const UINT nbr = MAX_FIELDS * 2;
+	const UINT nbr = g_maxFields * 2;
 	VERTEX_PROTOTYPE vp1;
 	vector<VERTEX_PROTOTYPE> vps;
 	vps.assign(nbr, vp1);
 	int j = 0;
-	for (int i = 0; i < MAX_FIELDS; i += 2)
+	for (int i = 0; i < g_maxFields; i += 2)
 	{
 		vps[i].index = float(j);
 		vps[i + 1].index = float(j) + 0.5f;//two indices for a field to render field info in a 1D render texture as a line
@@ -121,7 +136,7 @@ void ASFields::FieldsRenderTechnique::Init(const char *techniqueName)
 	}
 	D3D10_BUFFER_DESC vbdesc =
 	{
-		MAX_FIELDS * 2 * sizeof(VERTEX_PROTOTYPE),
+		g_maxFields * 2 * sizeof(VERTEX_PROTOTYPE),
 		D3D10_USAGE_DEFAULT,
 		D3D10_BIND_VERTEX_BUFFER | D3D10_BIND_STREAM_OUTPUT,
 		0,
@@ -161,7 +176,7 @@ void ASFields::FieldsRenderTechnique::FirstPass()
 	m_technique->GetDesc(&techDesc);
 
 	m_technique->GetPassByIndex(0)->Apply(0);
-	m_device->Draw(MAX_FIELDS * 2);
+	m_device->Draw(g_maxFields * 2);
 
 	pBuffers[0] = NULL;
 	m_device->StreamOutputSetTargets(1, pBuffers, offset);
@@ -181,7 +196,7 @@ void ASFields::FieldsRenderTechnique::SecondPass()
 
 void ASFields::UpdateFieldsNumber(int incr)
 {
-	if ((m_fieldsNumber + incr <= MAX_FIELDS) && (m_fieldsNumber + incr > 0.0))
+	if ((m_fieldsNumber + incr <= g_maxFields) && (m_fieldsNumber + incr > 0.0))
 	{
 		m_fieldsNumber += incr;
 		m_ivFieldsNumber.Push(m_fieldsNumber);
@@ -210,7 +225,7 @@ void ASFields::InitShaderResources(vector<string> vsBuf)
 		else
 		{
 			it++;
-			if ((*it) == FNBR_CFG)
+			if ((*it) == g_FieldnbrCfg)
 			{
 				it++;
 				m_ivFieldsNumber.Push(atoi((*it).c_str()));
@@ -236,7 +251,7 @@ void ASFields::InitViews()
 	renderTargets1D pRenderTargets1D(m_vEffectResourceVariable1D.size(), NULL);
 
 	m_device->CreateTextures2D(pRenderTargets2D, WIDTH, HEIGHT);
-	m_device->CreateTextures1D(pRenderTargets1D, MAX_FIELDS);
+	m_device->CreateTextures1D(pRenderTargets1D, g_maxFields);
 
 	ASSceneObject::InitViews(pRenderTargets2D, pRenderTargets1D);
 
@@ -260,25 +275,25 @@ void ASFields::Render()
 	m_device->ClearRenderTargetViews(m_pRenderTargetViews2D);
 	switch (m_env->userInput.currentKey)
 	{
-		case CHANGE_TYPE			   : m_env->userInput.m_ivCurrentAction.val = CHANGE_TYPE				; break;
-		case CHANGE_SIZE			   : m_env->userInput.m_ivCurrentAction.val = CHANGE_SIZE				; break;
-		case CHANGE_CENTER_FORCE	   : m_env->userInput.m_ivCurrentAction.val = CHANGE_CENTER_FORCE		; break;
-		case CHANGE_EXTREMITY_FORCE	   : m_env->userInput.m_ivCurrentAction.val = CHANGE_EXTREMITY_FORCE	; break;
-		case CHANGE_INTERPOLATION	   : m_env->userInput.m_ivCurrentAction.val = CHANGE_INTERPOLATION		; break;
-		case ADD_FIELDS:
+		case g_changeType			   : m_env->userInput.m_ivCurrentAction.val = g_changeType				; break;
+		case g_changeSize			   : m_env->userInput.m_ivCurrentAction.val = g_changeSize				; break;
+		case g_changeCenterForce	   : m_env->userInput.m_ivCurrentAction.val = g_changeCenterForce		; break;
+		case g_changeExtremityForce	   : m_env->userInput.m_ivCurrentAction.val = g_changeExtremityForce	; break;
+		case g_changeInterpolation	   : m_env->userInput.m_ivCurrentAction.val = g_changeInterpolation		; break;
+		case g_addFields:
 			if (m_env->userInput.keyReleased)
 				UpdateFieldsNumber(1);
 			break;
-		case SUB_FIELDS:
+		case g_subFields:
 			if (m_env->userInput.keyReleased)
 				UpdateFieldsNumber(-1);
 			break;
-		case SWITCH_VISIBILITY		   :
+		case g_switchVisibility		   :
 			if(m_env->userInput.keyReleased)
 				m_areDisplayed = !m_areDisplayed;
 			break;
 	}
-	m_fvWidth.Push(m_device->GetDimensions().x / (float(MAX_FIELDS) * 2.0f));
+	m_fvWidth.Push(m_device->GetDimensions().x / (float(g_maxFields) * 2.0f));
 	//Set correct render targets
 	m_device->SetRenderTargets(m_pRenderTargetViews1D, m_pDepthStencilView1D);
 

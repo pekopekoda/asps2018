@@ -2,6 +2,18 @@
 
 #include "ASSceneObject.h"
 
+// Used with interface input query to warn program user may change currently picked field's parameters, or about different events :
+constexpr uint8_t g_shaderColor	    = 97 ;//1 key for color on particles
+constexpr uint8_t g_shaderTexture	= 98 ;//2 key for texture on particles
+constexpr uint8_t g_shaderToon		= 99 ;//3 key for toon on particles
+constexpr uint8_t g_shaderDiffuse	= 100;//4 key for diffuse and specular on particles
+constexpr uint8_t g_shaderBump		= 101;//5 key for bump on particles
+constexpr uint8_t g_shaderDof		= 102;//6 key for Depth on field on particles
+constexpr uint8_t g_shaderGlow		= 103;//7 key for glow on particles
+constexpr char*	  g_senvMapCfg		= "Environment map";
+
+extern constexpr uint8_t g_showPanel = 80;
+
 /*The screen is a square rendered in front of the camera. It is rendered through two passes.
 The first pass displays the other objects rendered in the scene as a texture and drops the render into a render texture.
 The second pass gets the previous render texture and render the scene one more time, allowing to perform special effect as depth of field or glow.*/
@@ -182,7 +194,7 @@ void ASScreen::InitShaderResources(vector<string> vsBuf)
 		else
 		{
 			it++;
-			if ((*it) == SENVMAP_CFG)
+			if ((*it) == g_senvMapCfg)
 			{
 				it++;
 				string txtPath = TEXTURE_PATH + (*it);
@@ -212,16 +224,16 @@ void ASScreen::Render()
 		int cua = m_env->userInput.currentKey;
 		switch (cua)
 		{
-		case SHOW_PANEL:
-			if (m_env->userInput.m_ivCurrentAction.val == SHOW_PANEL)
+		case g_showPanel:
+			if (m_env->userInput.m_ivCurrentAction.val == g_showPanel)
 				m_env->userInput.m_ivCurrentAction.val = 0;
-			else m_env->userInput.m_ivCurrentAction.val = SHOW_PANEL;
+			else m_env->userInput.m_ivCurrentAction.val = g_showPanel;
 			break;
-		case SHADER_DOF:
+		case g_shaderDof:
 			m_bvDOF.Push(int(!m_bvDOF.val));
 			m_env->userInput.m_ivCurrentAction.val = 0;
 			break;
-		case SHADER_GLOW:
+		case g_shaderGlow:
 			m_bvGlow.Push(int(!m_bvGlow.val));
 			m_env->userInput.m_ivCurrentAction.val = 0;
 			break;

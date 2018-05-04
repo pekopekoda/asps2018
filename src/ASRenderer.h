@@ -705,34 +705,29 @@ public:
 ////////////////////////////////////////////////////////////////////////////////////////////
 //These classes manage the render resources views (a render resource is a texture on which a previous pass has been rendered. It is 
 //then usually used by another pass to retrieve informations of the previous render pass).
-class textureND : public shaderResource
-{
-protected:
-	textureND();
-	~textureND();
-};
-class texture1D: textureND
+
+class texture1D: public shaderResource
 {
 	ID3D10Texture1D *t;
 public:
 	friend class renderTargetViews;
 	friend class effectResourceVariable;
 	texture1D(unsigned int width = WIDTH);
-	texture1D(unsigned int width) : m_d3dDevice(device)
+	texture1D(unsigned int width)
 	{
-		test(device->CreateTexture1D(&*m_desc1D, NULL, &t));
+		test((*m_d3dD3vice)->CreateTexture1D(&*g_desc1D, NULL, &t));
 	}
 	ULONG Release() { return t->Release(); }
 };
 
-class texture2D: public textureND
+class texture2D: public shaderResource
 {
 	ID3D10Texture2D *t;
 public:
 	friend class renderTargetViews;
 	friend class effectResourceVariable;
 	texture2D(unsigned int width = WIDTH, unsigned int height = HEIGHT);
-	texture2D(unsigned int width, unsigned int height) : m_d3dDevice(device)
+	texture2D(unsigned int width, unsigned int height)
 	{
 		test((*m_d3dDevice)->CreateTexture2D(&*g_desc2D, NULL, &t));
 	}
@@ -804,11 +799,6 @@ public:
 			CreateDepthStencilView2D(g_desc2D.Width, g_desc2D.Height);
 	}
 
-	void RemoveRenderTargetView(int idx)
-	{
-		auto r = rts.erase(rts.begin() + idx);
-	}
-
 	void SetRenderTarget(int idx)
 	{
 		(*m_d3dDevice)->OMSetRenderTargets(1, &rts[idx], m_dsv);
@@ -838,7 +828,8 @@ public:
 	{
 		m_dsv->Release();
 		m_dsv = nullptr;
-		for(auto r : rts) r->Release();
+		for(auto r : rts)
+			if(r != nullptr) r->Release();
 		rts.clear();
 	}
 
@@ -847,6 +838,7 @@ public:
 class effectResourceVariables
 {
 	vector<effectResourceVariable*> m_ervs;
+
 public:
 	int Size() { return m_ervs.size(); }
 	void Add(effectResourceVariable *erv)
@@ -860,7 +852,17 @@ public:
 			(*it)->Push();
 		}
 	}
-	void Clear()
+	template<class T>
+	void Set(vector<T>& textures)
+	{
+		auto it = m_ervs.begin();
+		for (auto tex : textures)
+		{
+			(*it)->Set(tex.t);
+			it++;
+		}
+	}
+	void Release()
 	{
 		for (auto e : m_ervs)
 			e->Release();

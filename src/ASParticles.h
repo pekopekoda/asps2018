@@ -1,6 +1,13 @@
 #pragma once
 #include "ASSceneObject.h"
 
+constexpr char* g_pmeshCfg = "Particle mesh";
+constexpr char* g_ptexCfg = "Particle texture";
+constexpr char* g_prampCfg = "Particle ramp color";
+constexpr char* g_pnbrCfg = "Particle number";
+constexpr uint8_t g_changeRate = 82; //Particle emission per second
+
+
 class ASParticles : public ASSceneObject
 {
 	class ParticlesRenderTechnique: public RenderTechnique
@@ -228,12 +235,12 @@ void ASParticles::InitShaderResources(vector<string> vsBuf)
 		else
 		{
 			it++;
-			if ((*it) == PMESH_CFG)
+			if ((*it) == g_pmeshCfg)
 			{
 				it++;
 				m_meshPath = MESH_PATH + (*it);
 			}
-			else if ((*it) == PTEX_CFG)
+			else if ((*it) == g_ptexCfg)
 			{
 				{
 					it++;
@@ -248,7 +255,7 @@ void ASParticles::InitShaderResources(vector<string> vsBuf)
 					m_vConstResourceVariable2D.push_back(&m_rrDiffuse);
 				}
 			}
-			else if ((*it) == PRAMP_CFG)
+			else if ((*it) == g_prampCfg)
 			{
 				{
 					it++;
@@ -259,7 +266,7 @@ void ASParticles::InitShaderResources(vector<string> vsBuf)
 					m_vConstResourceVariable2D.push_back(&m_rrRampColor);
 				}
 			}
-			else if ((*it) == PNBR_CFG)
+			else if ((*it) == g_pnbrCfg)
 			{
 				{
 					it++;
@@ -313,7 +320,7 @@ void ASParticles::Render()
 	m_device->ClearRenderTargetViews(m_pRenderTargetViews2D);
 	switch (m_env->userInput.currentKey)
 	{
-		case CHANGE_RATE: m_env->userInput.m_ivCurrentAction.val = CHANGE_RATE;	break;
+		case g_changeRate: m_env->userInput.m_ivCurrentAction.val = g_changeRate;	break;
 	}
 
 	if (m_env->userInput.keyReleased)
@@ -328,7 +335,7 @@ void ASParticles::Render()
 		}
 	}
 
-	if (m_env->userInput.m_ivCurrentAction.val == CHANGE_RATE && m_env->userInput.m_fvMouseWheelValue.val)
+	if (m_env->userInput.m_ivCurrentAction.val == g_changeRate && m_env->userInput.m_fvMouseWheelValue.val)
 	{
 		float rate = m_fvRate.val;
 		rate += (m_env->userInput.m_fvMouseWheelValue.val < 0.0) ? -m_rateVariation : m_rateVariation;
