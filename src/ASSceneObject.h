@@ -7,10 +7,10 @@
 #include "ASMesh.h"
 #include "ASSceneInstance.h"
 
-constexpr char* g_meshPath  "../Medias/Meshes/";
-constexpr char* g_texturePath  "../Medias/Textures/";
+const char* g_meshPath = "../Medias/Meshes/";
+const char* g_texturePath = "../Medias/Textures/";
 
-
+class ASScene;
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////Abstract for objects to be rendered in the scene
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -19,6 +19,7 @@ class ASSceneObject
 	friend class ASSceneInstance;
 protected:
 	struct VERTEX_PROTOTYPE {};
+	ASScene *m_scene;
 	///////////////////////////////////////////////////////////////////////////////////////////////
 	//This abstract class is an interface between the vertex buffers and related and the objects
 	//to be rendered in the scene. Its job is to create a vertex buffer, make the connection between 
@@ -36,6 +37,13 @@ protected:
 	//HLSL Render technique
 	ID3D10EffectTechnique	*m_technique;
 	effectResourceVariable m_rrMainRenderResource;
+	//Handle to all the effect resource variables needed to render the object
+	effectResourceVariables m_vEffectResourceVariable2D;
+	effectResourceVariables m_vEffectResourceVariable1D;
+	effectResourceVariables m_vConstResourceVariable;
+
+	renderTargetViews m_pRenderTargetViews2D;
+	renderTargetViews m_pRenderTargetViews1D;
 
 	virtual const vector<D3D10_INPUT_ELEMENT_DESC> GetLayoutPrototype()
 	{
@@ -43,12 +51,11 @@ protected:
 	}
 
 	virtual UINT GetSizeOfVertexPrototype();
-	template <class T>
-	ASSceneObject(shared_ptr<T> parent);
-	~ASSceneObject();
+	ASSceneObject();
+	ASSceneObject(ASScene* parent);
 
 public:
-	void InitShaderResources(vector<string> vsBuf);
+	void InitShaderResources(vector<tuple<string,string>> vsBuf);
 	//Returns draw from buffer
 	ID3D10Buffer *GetFirstBuffer();
 	
@@ -59,16 +66,7 @@ public:
 	//render passes for each buffer to draw
 	void Render();
 
-	virtual void FirstPass();
-	//Handle to all the effect resource variables needed to render the object
-	effectResourceVariables m_vEffectResourceVariable2D;
-	effectResourceVariables m_vEffectResourceVariable1D;
-	effectResourceVariables m_vConstResourceVariable;
-
-	renderTargetViews m_pRenderTargetViews2D;
-	renderTargetViews m_pRenderTargetViews1D;
-	effectResourceVariable m_rrMainRenderResource;
-	
+	virtual void FirstPass();	
 	//Get the render resource used for main render pass for this object
 	std::pair<effectResourceVariable*, effectResourceVariable*> ASSceneObject::GetMainRenderResource();
 
@@ -80,6 +78,8 @@ public:
 
 	template<typename T>
 	HRESULT InitBuffers(vector<ID3D10Buffer*> vBuffers, vector<D3D10_INPUT_ELEMENT_DESC> layout, vector<T> vps, D3D10_BUFFER_DESC vbdesc);
+	virtual void InitBuffers();
+	virtual ~ASSceneObject();
 };
 
 
@@ -91,6 +91,14 @@ UINT ASSceneObject::GetSizeOfVertexPrototype()
 	return sizeof(VERTEX_PROTOTYPE);
 }
 
+ASSceneObject::ASSceneObject()
+{
+}
+
+
+void ASSceneObject::InitShaderResources(vector<tuple<string, string>> vsBuf)
+{
+}
 
 ID3D10Buffer *ASSceneObject::GetFirstBuffer()
 {
@@ -115,6 +123,14 @@ void ASSceneObject::Init(const char *techniqueName)
 	ASRenderer::CreateInputLayout(GetLayoutPrototype() , passDesc, &m_layout);
 }
 
+void ASSceneObject::Render()
+{
+}
+
+void ASSceneObject::FirstPass()
+{
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //
 //
@@ -125,22 +141,26 @@ std::pair<effectResourceVariable*, effectResourceVariable*> ASSceneObject::GetMa
 {
 	std::pair<effectResourceVariable*, effectResourceVariable*> p = { &m_rrMainRenderResource ,nullptr };
 	if (m_instance != nullptr)
-		p.second = m_instance.getMainRenderResource();
+		p.second = m_instance->GetMainRenderResource();
 	return p;
+}
+
+void ASSceneObject::InitViews()
+{
 }
 
 inline void ASSceneObject::InitViews(textures1D& pRenderTargets)
 {
-	for (auto tv : pRenderTargets)
-		m_pRenderTargetViews1D.AddRenderTargetView(tv);
+	for (auto &tv : pRenderTargets)
+		m_pRenderTargetViews1D.AddRenderTargetView(*tv);
 
 	m_pRenderTargetViews1D.SetRenderTargets();
 	m_vEffectResourceVariable1D.Set(pRenderTargets);
 }
 inline void ASSceneObject::InitViews(textures2D& pRenderTargets)
 {
-	for (auto tv : pRenderTargets)
-		m_pRenderTargetViews2D.AddRenderTargetView(tv);
+	for (auto &tv : pRenderTargets)
+		m_pRenderTargetViews2D.AddRenderTargetView(*tv);
 
 	m_pRenderTargetViews2D.SetRenderTargets();
 	m_vEffectResourceVariable2D.Set(pRenderTargets);
@@ -192,6 +212,11 @@ void ASSceneObject::ClearRenderTargetViews()
 	m_pRenderTargetViews2D.ClearRenderTargets();
 }
 
-template<class T>
-ASSceneObject::ASSceneObject(shared_ptr<T> scene): m_parent(make_shared<T>(scene)){}
+ASSceneObject::ASSceneObject(ASScene* parent)
+{
+	m_scene = parent;
+}
+void ASSceneObject::InitBuffers()
+{
+}
 ASSceneObject::~ASSceneObject(){}

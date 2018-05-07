@@ -21,15 +21,11 @@ constexpr char* g_atmosphereCfg = "Atmosphere thickness";
 //constexpr int8_t g_rightClickEvent = 1;    //Correspond to a trigger which means "right mouse button has just been pushed".
 //constexpr int8_t g_exitModeCommand = 27;	//Cancel the current mode
 //constexpr uint8_t g_translateModeCommand = 77; //Translate mode
-extern uiCommandStruct g_uiCommands;
 
 using namespace std;
 
 class ASScene
 {
-	ASScene();
-	~ASScene();
-
 	unique_ptr<ASScreen> m_screen;
 	unique_ptr<ASCamera> m_camera;
 
@@ -55,11 +51,14 @@ class ASScene
 
 public:
 	float CurrentTime();
-	void Init(vector<string> buf);
+	void Init(vector<tuple<string, string>> vsBuf);
 	void Picking3D();
 	void Update();
+	void Render();
 	void PostFrame();
 	void Clear();
+	ASScene();
+	~ASScene();
 };
 
 float ASScene::CurrentTime()
@@ -67,7 +66,7 @@ float ASScene::CurrentTime()
 	return m_fvTime.val;
 }
 
-void ASScene::Init(vector<string> vsBuf)
+void ASScene::Init(vector<tuple<string,string>> vsBuf)
 {
 	// Obtain the variables
 	m_mvWorldViewProj = effectMatrixVariable("matWorldViewProjection");
@@ -117,10 +116,10 @@ void ASScene::Init(vector<string> vsBuf)
 
 	Picking3D();
 
-	m_screen = make_unique<ASScreen>(make_unique<ASScreen>(this));
-	m_camera = make_unique<ASCamera>(this);
-	m_objects.push_back(make_unique<ASFields>(this));
-	m_objects.push_back(make_unique<ASParticles>(this));
+	m_screen = make_unique<ASScreen>(this);
+	m_camera = make_unique<ASCamera>(new ASCamera(this));
+	m_objects.push_back(make_unique<ASFields>(new ASFields(this)));
+	m_objects.push_back(make_unique<ASParticles>(new ASFields(this)));
 
 	m_screen->InitShaderResources(vsBuf);
 	for (auto &o : m_objects)
@@ -128,13 +127,12 @@ void ASScene::Init(vector<string> vsBuf)
 
 	m_screen->InitViews();
 	for (auto &o : m_objects)
-		o->InitViews();
-	for (auto &o : m_object)
 	{
+		o->InitViews();
 		auto p = o->GetMainRenderResource();
-		m_screen->AddEffectResourceVariable(*o.first->GetMainRenderResource());
-		if (o.second != nullptr)
-			m_screen->AddEffectResourceVariable(*o.second->GetMainRenderResource());
+		m_screen->AddEffectResourceVariable(p.first);
+		if (p.second != nullptr)
+			m_screen->AddEffectResourceVariable(p.second);
 	}
 
 	m_screen->InitBuffers();
@@ -187,11 +185,11 @@ void ASScene::Update()
 	{
 		switch (ASUserInterface::currentKey)
 		{
-		case g_uiCommands.scene.switchGravity:
+		case g_uiCommands::scene::switchGravity:
 			m_bvGravity.Push(!m_bvGravity.val);
 			break;
 
-		case g_uiCommands.scene.resetCamera:
+		case g_uiCommands::scene::resetCamera:
 			m_camera->Reset();
 			Picking3D();
 			break;
@@ -213,7 +211,7 @@ void ASScene::PostFrame()
 	if(!ASUserInterface::mouseReleased)
 		Picking3D();
 
-	float mwd = m_ivCurrentAction.val ? 0.0 : ASUserInterface::mouseWheelDelta;
+	double mwd = m_ivCurrentAction.val ? 0.0 : ASUserInterface::mouseWheelDelta;
 	if(!ASUserInterface::mouseReleased || mwd != 0.0)
 		m_camera->Update(ASUserInterface::cursorOffset, ASUserInterface::mouseButton, mwd);
 	m_mvProj.Push();
@@ -223,19 +221,17 @@ void ASScene::PostFrame()
 
 void ASScene::Render()
 {
-	m_fields->Render();
-	m_particles->Render();
 	m_screen->Render();
+	for (auto &o : m_objects)
+		o->Render();
 }
 
 void ASScene::Clear()
 {
 	m_screen->Clear();
-	m_fields->Clear();
-	m_particles->Clear();
+	for (auto &o : m_objects)
+		o->Clear();
 }
-
-
 
 ASScene::ASScene()
 {

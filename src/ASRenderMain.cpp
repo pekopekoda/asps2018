@@ -61,18 +61,16 @@ int WINAPI wWinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdL
 	ASRenderer::InitBlendstate();
 	ASRenderer::CreateEffect();
 
-	if (FAILED(g_displayDevice->InitViewport()))
+	if (FAILED(ASRenderer::InitViewport()))
 	{
 		ASRenderer::Clear();
 		g_scene.Clear();
 		return 1;
 	}
-	g_displayDevice->CreateDepthStencilState();
+	ASRenderer::CreateDepthStencilState();
 
-	vector<std::string> buf;
-	buf = ASUserInterface::GetUserFileBuffer();
-	g_env->InitWorld(buf);
-	g_scene->Init(buf);
+	auto buf = ASUserInterface::GetUserFileBuffer();
+	g_scene.Init(buf);
 
     // Main message loop
     MSG msg = {0};
@@ -89,17 +87,17 @@ int WINAPI wWinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdL
         }
     }
 	
-	g_displayDevice->Clear();
-	g_scene->Clear();
+	ASRenderer::Clear();
+	g_scene.Clear();
 
     return ( int )msg.wParam;
 }
 
 void RenderFrame()
 {
-	g_env->PreFrame();
-	g_scene->Render();
-	g_env->PostFrame();
+	g_scene.Update();
+	g_scene.Render();
+	g_scene.PostFrame();
 
-	g_displayDevice->PresentSwapChain();
+	ASRenderer::PresentSwapChain();
 }

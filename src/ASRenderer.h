@@ -4,6 +4,7 @@
 #include <d3dx10.h>
 #include <vector>
 #include <windows.h>
+#include <memory.h>
 #include<comdef.h>
 using namespace std;
 
@@ -28,6 +29,82 @@ void test(HRESULT hr, char *errTitle)
 		};
 	}
 }
+
+class texture1D;
+class texture2D;
+//shader resources containers
+using textures1D = vector<texture1D*>;
+using textures2D = vector<texture2D*>;
+
+////////////////////////////////////////////////////////////////////////////////////////////
+//Generic constructors and typedef
+////////////////////////////////////////////////////////////////////////////////////////////
+//Shader resources descriptions
+D3D10_TEXTURE1D_DESC g_desc1D = []()
+{
+	D3D10_TEXTURE1D_DESC desc1D;
+	ZeroMemory(&desc1D, sizeof(desc1D));
+	desc1D.Width = WIDTH;
+	desc1D.MipLevels = 1;
+	desc1D.ArraySize = 1;
+	desc1D.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
+	desc1D.Usage = D3D10_USAGE_DEFAULT;
+	desc1D.BindFlags = D3D10_BIND_RENDER_TARGET | D3D10_BIND_SHADER_RESOURCE;
+	desc1D.CPUAccessFlags = 0;
+	return desc1D;
+}();
+
+D3D10_TEXTURE2D_DESC g_desc2D = []()
+{
+	D3D10_TEXTURE2D_DESC desc2D;
+	ZeroMemory(&desc2D, sizeof(desc2D));
+	desc2D.Width = WIDTH;
+	desc2D.MipLevels = 1;
+	desc2D.ArraySize = 1;
+	desc2D.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
+	desc2D.Usage = D3D10_USAGE_DEFAULT;
+	desc2D.BindFlags = D3D10_BIND_RENDER_TARGET | D3D10_BIND_SHADER_RESOURCE;
+	desc2D.CPUAccessFlags = 0;
+	desc2D.SampleDesc.Count = 1;
+	desc2D.SampleDesc.Quality = 0;
+	desc2D.Height = HEIGHT;
+	return desc2D;
+}();
+
+D3D10_SHADER_RESOURCE_VIEW_DESC g_srvDesc = []()
+{
+	D3D10_SHADER_RESOURCE_VIEW_DESC srvDesc;
+	ZeroMemory(&g_srvDesc, sizeof(g_srvDesc));
+	srvDesc.Texture1DArray.ArraySize = 1;
+	srvDesc.Texture1D.MostDetailedMip = 0;
+	srvDesc.Texture1D.MipLevels = 1;
+	srvDesc.Texture1DArray.FirstArraySlice = 0;
+	srvDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
+	return srvDesc;
+}();
+
+D3D10_RENDER_TARGET_VIEW_DESC g_rtDesc = []()
+{
+	D3D10_RENDER_TARGET_VIEW_DESC rtDesc;
+	ZeroMemory(&rtDesc, sizeof(rtDesc));
+	rtDesc.Texture2DArray.ArraySize = 1;
+	rtDesc.Texture2DArray.FirstArraySlice = 0;
+	rtDesc.Texture2DArray.MipSlice = 0;
+	rtDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
+	return rtDesc;
+}();
+
+D3D10_DEPTH_STENCIL_VIEW_DESC g_dsvDesc = []()
+{
+	D3D10_DEPTH_STENCIL_VIEW_DESC descDSV;
+	//Depth stencil views
+	ZeroMemory(&descDSV, sizeof(descDSV));
+	descDSV.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
+	descDSV.Texture2D.MipSlice = 0;
+	descDSV.Texture2DArray.ArraySize = 1;
+	descDSV.Texture2DArray.FirstArraySlice = 0;
+	return descDSV;
+}();
 
 ////////////////////////////////////////////////////////////////////////////////////////////
 //This class is the interface between DirectX and the objects in the scene.Build
@@ -80,6 +157,8 @@ public:
 	static HRESULT InitRasterizer();
 	//Create the blend state
 	static HRESULT InitBlendstate();
+	static HRESULT CreateTexture2D(ID3D10Texture2D ** pRenderTarget, int width=WIDTH, int height=HEIGHT);
+	static HRESULT CreateTexture1D(ID3D10Texture1D ** pRenderTarget, int width=WIDTH);
 	//Reserve the layout passed in argument for future vertex buffer assignation
 	static HRESULT CreateInputLayout(const std::vector<D3D10_INPUT_ELEMENT_DESC> pInputElementDescs, D3D10_PASS_DESC pShaderBytecodeWithInputSignature, ID3D10InputLayout**ppInputLayout);
 	//Reserve vertex buffer size in memory
@@ -87,7 +166,7 @@ public:
 	//Reserve vertex buffer size in memory
 	static HRESULT CreateBuffer(D3D10_BUFFER_DESC pDesc, ID3D10Buffer **ppBuffer);
 	static HRESULT CreateShaderResourceView(ID3D10Resource * tex, D3D10_SHADER_RESOURCE_VIEW_DESC * srvDesc, ID3D10ShaderResourceView ** srv);
-
+	static HRESULT CreateShaderResourceViewFromFile(const char * path, ID3D10ShaderResourceView * SRV);
 
 	//Create new effect technique with specific name
 	static ID3D10EffectTechnique* GetTechniqueByName(LPCSTR techniqueName);
@@ -124,7 +203,7 @@ HRESULT ASRenderer::SetSwapChain(textures2D pRenderTarget)
 {
 	HRESULT hr = S_OK;
 	//Set swap chain buffer///////////////////////////////////////////////////////////////////////////////
-	hr = m_d3dSwapChain->GetBuffer(0, __uuidof(ID3D10Texture2D), (LPVOID*)pRenderTarget.data);
+	hr = m_d3dSwapChain->GetBuffer(0, __uuidof(ID3D10Texture2D), (LPVOID*)pRenderTarget.data());
 	test(hr);
 	return hr;
 }
@@ -317,6 +396,31 @@ HRESULT ASRenderer::InitBlendstate()
 	return hr;
 }
 
+HRESULT ASRenderer::CreateTexture2D(ID3D10Texture2D **pRenderTarget, int width, int height)
+{
+	HRESULT hr = S_OK;
+
+	g_desc2D.Width = width;
+	g_desc2D.Height = height;
+
+	hr = m_d3dDevice->CreateTexture2D(&g_desc2D, NULL, pRenderTarget);
+	test(hr);
+
+	return hr;
+}
+
+HRESULT ASRenderer::CreateTexture1D(ID3D10Texture1D **pRenderTarget, int width)
+{
+	HRESULT hr = S_OK;
+
+	g_desc1D.Width = width;
+
+	hr = m_d3dDevice->CreateTexture1D(&g_desc1D, NULL, pRenderTarget);
+	test(hr);
+
+	return hr;
+}
+
 HRESULT ASRenderer::CreateEffect()
 {
 	HRESULT hr = S_OK;
@@ -335,6 +439,18 @@ HRESULT ASRenderer::CreateEffect()
 		NULL, &m_d3dEffect, &compErrors, NULL);
 	char* pCompileErrors = static_cast<char*>(compErrors->GetBufferPointer());
 	test(hr, pCompileErrors);
+	return hr;
+}
+
+HRESULT ASRenderer::CreateShaderResourceViewFromFile(const char *path, ID3D10ShaderResourceView *SRV)
+{
+	//Initialization with a file. It won't be necessary to push any output texture then.
+	D3DX10_IMAGE_LOAD_INFO loadInfo;
+	ZeroMemory(&loadInfo, sizeof(D3DX10_IMAGE_LOAD_INFO));
+	loadInfo.BindFlags = D3D10_BIND_SHADER_RESOURCE;
+	loadInfo.Format = DXGI_FORMAT_BC1_UNORM;
+	HRESULT hr = D3DX10CreateShaderResourceViewFromFileA(m_d3dDevice, path, &loadInfo, NULL, &SRV, NULL);
+	test(hr, "Shader resource view creation failed");
 	return hr;
 }
 
@@ -362,9 +478,9 @@ HRESULT ASRenderer::CreateBuffer(D3D10_BUFFER_DESC pDesc, ID3D10Buffer ** ppBuff
 	return hr;
 }
 
-inline HRESULT ASRenderer::CreateShaderResourceView(ID3D10Resource *tex, D3D10_SHADER_RESOURCE_VIEW_DESC *srvDesc, ID3D10ShaderResourceView **srv)
+HRESULT ASRenderer::CreateShaderResourceView(ID3D10Resource *tex, D3D10_SHADER_RESOURCE_VIEW_DESC *srvDesc, ID3D10ShaderResourceView **srv)
 {
-	m_d3dDevice->CreateShaderResourceView(tex, srvDesc, srv);
+	return m_d3dDevice->CreateShaderResourceView(tex, srvDesc, srv);
 }
 
 
@@ -436,78 +552,6 @@ void ASRenderer::Clear()
 ASRenderer::ASRenderer(){}
 ASRenderer::~ASRenderer() {}
 
-////////////////////////////////////////////////////////////////////////////////////////////
-//Generic constructors and typedef
-////////////////////////////////////////////////////////////////////////////////////////////
-//Shader resources descriptions
-D3D10_TEXTURE1D_DESC g_desc1D = []()
-{
-	D3D10_TEXTURE1D_DESC desc1D;
-	ZeroMemory(&desc1D, sizeof(desc1D));
-	desc1D.Width = WIDTH;
-	desc1D.MipLevels = 1;
-	desc1D.ArraySize = 1;
-	desc1D.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
-	desc1D.Usage = D3D10_USAGE_DEFAULT;
-	desc1D.BindFlags = D3D10_BIND_RENDER_TARGET | D3D10_BIND_SHADER_RESOURCE;
-	desc1D.CPUAccessFlags = 0;
-	return desc1D;
-}();
-
-D3D10_TEXTURE2D_DESC g_desc2D = []()
-{
-	D3D10_TEXTURE2D_DESC desc2D;
-	ZeroMemory(&desc2D, sizeof(desc2D));
-	desc2D.Width = WIDTH;
-	desc2D.MipLevels = 1;
-	desc2D.ArraySize = 1;
-	desc2D.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
-	desc2D.Usage = D3D10_USAGE_DEFAULT;
-	desc2D.BindFlags = D3D10_BIND_RENDER_TARGET | D3D10_BIND_SHADER_RESOURCE;
-	desc2D.CPUAccessFlags = 0;
-	desc2D.SampleDesc.Count = 1;
-	desc2D.SampleDesc.Quality = 0;
-	desc2D.Height = HEIGHT;
-	return desc2D;
-}();
-
-D3D10_SHADER_RESOURCE_VIEW_DESC g_srvDesc = []()
-{
-	D3D10_SHADER_RESOURCE_VIEW_DESC srvDesc;
-	ZeroMemory(&g_srvDesc, sizeof(g_srvDesc));
-	srvDesc.Texture1DArray.ArraySize = 1;
-	srvDesc.Texture1D.MostDetailedMip = 0;
-	srvDesc.Texture1D.MipLevels = 1;
-	srvDesc.Texture1DArray.FirstArraySlice = 0;
-	srvDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
-	return srvDesc;
-}();
-
-D3D10_RENDER_TARGET_VIEW_DESC g_rtDesc = []()
-{
-	D3D10_RENDER_TARGET_VIEW_DESC rtDesc;
-	ZeroMemory(&rtDesc, sizeof(rtDesc));
-	rtDesc.Texture2DArray.ArraySize = 1;
-	rtDesc.Texture2DArray.FirstArraySlice = 0;
-	rtDesc.Texture2DArray.MipSlice = 0;
-	rtDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
-	return rtDesc;
-}();
-
-D3D10_DEPTH_STENCIL_VIEW_DESC g_dsvDesc = []()
-{
-	//Depth stencil views
-	ZeroMemory(&descDSV, sizeof(descDSV));
-	descDSV.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
-	descDSV.Texture2D.MipSlice = 0;
-	descDSV.Texture2DArray.ArraySize = 1;
-	descDSV.Texture2DArray.FirstArraySlice = 0;
-	return descDSV;
-}();
-
-//shader resources containers
-using textures1D = vector<texture1D>;
-using textures2D = vector<texture2D>;
 
 ////////////////////////////////////////////////////////////////////////////////////////////
 //These classes manage the render resources variables within wrappers.
@@ -578,9 +622,10 @@ public:
 	void Push(Args&& ...args)
 	{
 		//Sends the value updated to the shader variable
-		var->SetFloatVector(std::forward<Args>args);
+		var->SetFloatVector(std::forward<Args>(args)...);
 	}
-	effectVectorVariable(char* name) { Init(name); }
+	effectVectorVariable() {}
+	effectVectorVariable(const char* name) { Init(name); }
 };
 
 class effectMatrixVariable
@@ -588,7 +633,8 @@ class effectMatrixVariable
 	ID3D10EffectMatrixVariable* var;
 public:
 	D3DXMATRIX m;
-	effectMatrixVariable(char* name)
+	effectMatrixVariable() {}
+	effectMatrixVariable(const char* name)
 	{
 		//Get the corresponding variable in the shader by its name
 		var = ASRenderer::GetVariableByName(name)->AsMatrix();
@@ -617,10 +663,9 @@ class texture1D
 public:
 	friend class renderTargetViews;
 	friend class effectResourceVariable;
-	texture1D(unsigned int width = WIDTH);
-	texture1D(unsigned int width)
+	texture1D(unsigned int width=WIDTH)
 	{
-		test(ASRenderer::CreateTexture1D(&*g_desc1D, NULL, &t));
+		test(ASRenderer::CreateTexture1D(&t));
 	}
 	ULONG Release() { return t->Release(); }
 };
@@ -631,18 +676,15 @@ class texture2D
 public:
 	friend class renderTargetViews;
 	friend class effectResourceVariable;
-	texture2D(unsigned int width = WIDTH, unsigned int height = HEIGHT);
-	texture2D(unsigned int width, unsigned int height)
+	texture2D(unsigned int width=WIDTH, unsigned int height=HEIGHT)
 	{
-		test(ASRenderer::CreateTexture2D(&*g_desc2D, NULL, &t));
+		test(ASRenderer::CreateTexture2D(&t));
 	}
 	ULONG Release() { return t->Release(); }
 };
 
 // Create render target views/////////////////////////////////////////////////////////////////////////
 //and Depth stencil//////////////////////////////////////////////////////////////////////////////////
-ID3D10Device *const renderTargetViews::m_d3dDevice = ASRenderer::m_d3dDevice;
-
 class renderTargetViews
 {
 	static ID3D10Device *const m_d3dDevice;
@@ -744,43 +786,8 @@ public:
 			if(r != nullptr) r->Release();
 		rts.clear();
 	}
-
 };
-
-class effectResourceVariables
-{
-	vector<effectResourceVariable*> m_ervs;
-
-public:
-	int Size() { return m_ervs.size(); }
-	void Add(effectResourceVariable *erv)
-	{
-		m_ervs.push_back(erv);
-	}
-	void Push(int idxSeparator = 0)
-	{
-		for (auto it=m_ervs.end()-idxSeparator; it!=m_ervs.end(); it++)
-		{
-			(*it)->Push();
-		}
-	}
-	template<class T>
-	void Set(vector<T>& textures)
-	{
-		auto it = m_ervs.begin();
-		for (auto tex : textures)
-		{
-			(*it)->Set(tex.t);
-			it++;
-		}
-	}
-	void Release()
-	{
-		for (auto e : m_ervs)
-			e->Release();
-		m_ervs.clear();
-	}
-};
+ID3D10Device *const renderTargetViews::m_d3dDevice = ASRenderer::m_d3dDevice;
 
 class effectResourceVariable
 {
@@ -789,21 +796,21 @@ class effectResourceVariable
 public:
 	//The input texture the next pass will read to get informations of the previous pass
 	ID3D10ShaderResourceView* SRV = nullptr;
-
+	effectResourceVariable() {}
 	effectResourceVariable(const char *name)
 	{
 		//The connection between the two textures is made by the input texture name.
 		ESRV = ASRenderer::GetVariableByName(name)->AsShaderResource();
 	}
 
-	HRESULT Set(texture2D &&tex2D)
+	HRESULT Set(texture2D &tex2D)
 	{
 		g_srvDesc.ViewDimension = D3D10_SRV_DIMENSION_TEXTURE2D;
 		HRESULT hr = ASRenderer::CreateShaderResourceView(tex2D.t, &g_srvDesc, &SRV);
 		test(hr);
 		return hr;
 	}
-	HRESULT Set(texture1D &&tex1D)
+	HRESULT Set(texture1D &tex1D)
 	{
 		g_srvDesc.ViewDimension = D3D10_SRV_DIMENSION_TEXTURE1D;
 
@@ -819,7 +826,7 @@ public:
 		ZeroMemory(&loadInfo, sizeof(D3DX10_IMAGE_LOAD_INFO));
 		loadInfo.BindFlags = D3D10_BIND_SHADER_RESOURCE;
 		loadInfo.Format = DXGI_FORMAT_BC1_UNORM;
-		HRESULT hr = D3DX10CreateShaderResourceViewFromFileA((*m_d3dDevice), path, &loadInfo, NULL, &SRV, NULL);
+		HRESULT hr = ASRenderer::CreateShaderResourceViewFromFile(path, SRV);
 		test(hr, "Shader resource view creation failed");
 		return hr;
 	}
@@ -835,5 +842,40 @@ public:
 			SRV->Release();
 			SRV = NULL;
 		}
+	}
+};
+
+class effectResourceVariables
+{
+	vector<effectResourceVariable*> m_ervs;
+
+public:
+	int Size() { return m_ervs.size(); }
+	void Add(effectResourceVariable *erv)
+	{
+		m_ervs.push_back(erv);
+	}
+	void Push(int idxSeparator = 0)
+	{
+		for (auto it = m_ervs.end() - idxSeparator; it != m_ervs.end(); it++)
+		{
+			(*it)->Push();
+		}
+	}
+	template<class T>
+	void Set(vector<T>& textures)
+	{
+		auto it = m_ervs.begin();
+		for (auto &tex : textures)
+		{
+			(*it)->Set(*tex);
+			it++;
+		}
+	}
+	void Release()
+	{
+		for (auto e : m_ervs)
+			e->Release();
+		m_ervs.clear();
 	}
 };

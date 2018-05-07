@@ -87,7 +87,6 @@ float RESISTANCE;
 float GRAVITY;
 
 int g_gravity;
-int g_emAtCenter;
 int g_released;
 int g_display;
 

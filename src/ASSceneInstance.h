@@ -1,13 +1,14 @@
 #pragma once
 #include "ASSceneObject.h"
 
+class ASSceneObject;
 class ASSceneInstance
 {
 protected:
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//Same class as RenderTechnique except that it is specialized in instanced vertex buffers
 	//
-	const unique_ptr<ASSceneObject> m_instancer;
+	unique_ptr<ASSceneObject> m_instancer;
 	//Instances need an index buffer in addition with the vertex buffer
 	ID3D10Buffer *m_firstBuffer;
 	ID3D10Buffer *m_indexedBuffer;
@@ -32,16 +33,18 @@ protected:
 	}
 	virtual UINT GetSizeOfVertexPrototype();
 
-	ASSceneInstance(ASSceneObject *instancer, const char* meshPath);
-	~ASSceneInstance();
+	ASSceneInstance();
+	template<class T>
+	ASSceneInstance(T *instancer, const char* meshPath);
 
 public:
-	effectResourceVariable * GetMainRenderResource();
+	virtual effectResourceVariable *GetMainRenderResource();
 	void FirstPass();
 	void Init(const char *techniqueName, const char * meshPath, UINT instanceCount, ID3D10Buffer *instancerBuffer, UINT sizeOfInstancerVertexPrototype);
 	void InitShaderResources(vector<tuple<string, string>> vsBuf);
 	void InitBuffers();
 	void Clear();
+	virtual ~ASSceneInstance();	
 
 };
 
@@ -111,6 +114,10 @@ void ASSceneInstance::FirstPass()
 	ASRenderer::DrawInstance(m_instanceMesh.GetIndexCount(), m_instanceCount);
 }
 
-ASSceneInstance::ASSceneInstance(ASSceneObject *instancer, const char* meshPath) : m_instancer(make_unique<ASSceneObject>(instancer)), g_meshPath(meshPath)
-{}
+template<class T>
+ASSceneInstance::ASSceneInstance(T *instancer, const char* meshPath)
+{
+	m_instancer = make_unique<ASSceneObject>(instancer);
+	m_meshPath = meshPath;
+}
 ASSceneInstance::~ASSceneInstance() {}

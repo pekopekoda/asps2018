@@ -16,7 +16,7 @@ constexpr uint8_t g_maxFields = 50;				//number of fields in program
 //	const uint8_t addFields = 107;			// Increase the current fields number
 //	const uint8_t subFields = 109;			// Decrease the current fields number
 //	const uint8_t switchVisibility = 0x48;	// visibillity on/off
-//} g_fieldCommands;
+//} g_uiCommands.fields;
 constexpr char*	  fieldnbrCfg = "Fields initial number";
 
 class ASFields : public ASSceneObject
@@ -60,8 +60,6 @@ public:
 	effectResourceVariable m_rrFieldsGoal;
 	effectResourceVariable m_rrFieldsStrength;
 	effectResourceVariable m_rrFieldsTypeSize;
-
-	effectIntVariable m_bvEmitAtCenter;
 	effectIntVariable m_ivFieldsNumber;
 	effectIntVariable m_ivCurrentAction;
 	effectIntVariable m_ivTypeUpdate;
@@ -82,6 +80,8 @@ public:
 	void InitBuffers();
 	void InitShaders();
 	void Render();
+	template <class T>
+	ASFields(T* parent);
 };
 
 void ASFields::FirstPass() 
@@ -139,7 +139,6 @@ void ASFields::InitShaderResources(vector<tuple<string, string>> vsBuf)
 	m_rrFieldsTypeSize = effectResourceVariable("txFieldsTypeSize");
 	m_rrMainRenderResource = effectResourceVariable("txFields");
 	m_ivFieldsNumber = effectIntVariable("g_fieldNbr");
-	m_bvEmitAtCenter = effectIntVariable("g_emAtCenter");
 	m_ivCurrentAction = effectIntVariable("g_fieldsInterface");
 	m_ivTypeUpdate = effectIntVariable("g_fieldTypeUpdate");
 	m_fvSizeUpdate = effectFloatVariable("g_fieldSizeUpdate");
@@ -153,13 +152,12 @@ void ASFields::InitShaderResources(vector<tuple<string, string>> vsBuf)
 		string name = std::get<0>(*it);
 		string value = std::get<1>(*it);
 	
-		if (name == g_fieldCommands.fieldnbrCfg)
+		if (name == fieldnbrCfg)
 		{
 			m_ivFieldsNumber.Push(atoi(value.c_str()));
 		}
 	}
 
-	m_bvEmitAtCenter.Push(0);
 	m_ivFieldsNumber.Push(m_fieldsNumber);
 	m_vEffectResourceVariable2D.Add(&m_rrMainRenderResource);
 	m_vEffectResourceVariable1D.Add(&m_rrFieldsPos);
@@ -174,10 +172,10 @@ void ASFields::InitViews()
 	textures2D pRenderTargets2D(m_vEffectResourceVariable2D.Size(), NULL);
 	textures1D pRenderTargets1D(m_vEffectResourceVariable1D.Size(), NULL);
 
-	for (auto t : pRenderTargets2D)
-		t = texture2D(WIDTH, HEIGHT);
-	for (auto t : pRenderTargets1D)
-		t = texture2D(g_maxFields);
+	for (auto &t : pRenderTargets2D)
+		*t = texture2D(WIDTH, HEIGHT);
+	for (auto &t : pRenderTargets1D)
+		*t = texture1D(g_maxFields);
 
 	ASSceneObject::InitViews(pRenderTargets1D);
 	ASSceneObject::InitViews(pRenderTargets2D);
@@ -251,26 +249,25 @@ void ASFields::Render()
 	{
 		switch (ASUserInterface::currentKey)
 		{
-			case g_fieldCommands.changeType: m_ivTypeUpdate.Push(int(ASUserInterface::mouseWheelDelta)); break;
-			case g_fieldCommands.changeSize: m_fvSizeUpdate.Push(ASUserInterface::mouseWheelDelta); break;
-			case g_fieldCommands.changeCenterForce: m_fvCenterForceUpdate.Push(ASUserInterface::mouseWheelDelta); break;
-			case g_fieldCommands.changeExtremityForce: m_fvExtremityForceUpdate.Push(ASUserInterface::mouseWheelDelta); break;
-			case g_fieldCommands.changeInterpolation: m_fvForceInterpolationUpdate.Push(ASUserInterface::mouseWheelDelta); break;
+			case g_uiCommands::fields::changeType: m_ivTypeUpdate.Push(int(ASUserInterface::mouseWheelDelta)); break;
+			case g_uiCommands::fields::changeSize: m_fvSizeUpdate.Push(ASUserInterface::mouseWheelDelta); break;
+			case g_uiCommands::fields::changeCenterForce: m_fvCenterForceUpdate.Push(ASUserInterface::mouseWheelDelta); break;
+			case g_uiCommands::fields::changeExtremityForce: m_fvExtremityForceUpdate.Push(ASUserInterface::mouseWheelDelta); break;
+			case g_uiCommands::fields::changeInterpolation: m_fvForceInterpolationUpdate.Push(ASUserInterface::mouseWheelDelta); break;
 			case VK_LEFT: m_vvFieldPositionUpdate.Push(D3DXVECTOR3(-1.0f, 0.0f, 0.0f)); break;
 			case VK_RIGHT: m_vvFieldPositionUpdate.Push(D3DXVECTOR3(1.0f, 0.0f, 0.0f)); break;
 			case VK_UP: m_vvFieldPositionUpdate.Push(D3DXVECTOR3(0.0f, 1.0f, 0.0f)); break;
 			case VK_DOWN: m_vvFieldPositionUpdate.Push(D3DXVECTOR3(0.0f, -1.0f, 0.0f)); break;
-			case g_fieldCommands.addFields:
-		}
+		};
 	}
 	else
 	{
 		switch (ASUserInterface::currentKey)
 		{
-		case g_fieldCommands.addFields: UpdateFieldsNumber(1); break;
-		case g_fieldCommands.subFields: UpdateFieldsNumber(-1); break;
-		case g_fieldCommands.switchVisibility: m_areDisplayed = !m_areDisplayed; break;
-		}
+		case g_uiCommands::fields::addFields: UpdateFieldsNumber(1); break;
+		case g_uiCommands::fields::subFields: UpdateFieldsNumber(-1); break;
+		case g_uiCommands::fields::switchVisibility: m_areDisplayed = !m_areDisplayed; break;
+		};
 	}
 
 	//m_fvSizeUpdate.Push(ASRenderer::GetDimensions().x / (float(g_maxFields) * 2.0f));

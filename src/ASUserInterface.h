@@ -33,30 +33,29 @@ User config file should contain the following keywords:
 #define FRICTION_FILELINE 6
 #define EMITONFIELDCENTER_FILELINE 7
 
-constexpr struct uiCommandStruct
+using g_uiCommands = const struct
 {
-	static const struct
+	 const struct fields
 	{
-		static const uint8_t changeType = 0x54;			// type may be changed
-		static const uint8_t changeSize = 0x53;			// size may be changed
-		static const uint8_t changeCenterForce = 0x43;	// center force may be changed
-		static const uint8_t changeExtremityForce = 0x58;// extremity force may be changed
-		static const uint8_t changeInterpolation = 0x49;	// interpolation may be changed
-		static const uint8_t addFields = 107;			// Increase the current fields number
-		static const uint8_t subFields = 109;			// Decrease the current fields number
-		static const uint8_t switchVisibility = 0x48;	// visibillity on/off
-	} fields;
-	static const struct
+		 static const uint8_t changeType = 0x54;			// type may be changed
+		 static const uint8_t changeSize = 0x53;			// size may be changed
+		 static const uint8_t changeCenterForce = 0x43;	// center force may be changed
+		 static const uint8_t changeExtremityForce = 0x58;// extremity force may be changed
+		 static const uint8_t changeInterpolation = 0x49;	// interpolation may be changed
+		 static const uint8_t addFields = 107;			// Increase the current fields snumber
+		 static const uint8_t subFields = 109;			// Decrease the current fields number
+		 static const uint8_t switchVisibility = 0x48;	// visibillity on/off
+	};
+	 const struct scene
 	{
 		static const int8_t switchGravity = 0x47; // turn gravity on/off
 		static const int8_t resetCamera = 0x60; // camera is reset to its initial position
-	} scene;
-	static const struct
+	};
+	 const struct particles
 	{
-		static const int8_t emissionType = 0x45; // particles emitted at center of emitter / randomly in emitter area
 		static const uint8_t changeRate = 82; //Particle emission per second
-	} particles;
-	static const struct
+	};
+	 const struct screen
 	{
 		// Used with interface input query to warn program user may change currently picked field's parameters, or about different events :
 		static const uint8_t shaderColor = 97;//1 key for color on particles
@@ -67,10 +66,9 @@ constexpr struct uiCommandStruct
 		static const uint8_t shaderDof = 102;//6 key for Depth on field on particles
 		static const uint8_t shaderGlow = 103;//7 key for glow on particles
 		static const uint8_t showPanel = 80; // show explanations
-	} screen;
+	};
 
-} g_uiCommands;
-
+};
 
 
 class ASUserInterface
@@ -125,8 +123,7 @@ vector<tuple<string, string>> ASUserInterface::GetUserFileBuffer()
 		tmpBuf.erase(0, pos + delimiter.length());
 		pos = tmpBuf.find(delimiter);
 		value = tmpBuf.substr(0, pos);
-
-		vsBuf.push_back((name, value));
+		vsBuf.push_back({ name, value });
 	}
 	fi.close();
 	return vsBuf;
@@ -139,7 +136,6 @@ void ASUserInterface::MouseMoved(WPARAM wParam, LPARAM lParam)
 {
 	float x = LOWORD(lParam);
 	float y = HIWORD(lParam);
-	float dx, dy;
 
 	cursorOffset.x = cursorPosition.x - x;
 	cursorOffset.y = cursorPosition.y - y;
@@ -219,7 +215,7 @@ void ASUserInterface::UpdateInput()
 		m_fvMouseWheelValue.Push(-3);
 	else
 		m_fvMouseWheelValue.Push(3);
-	m_bvIsMouseReleased.Push(float(mouseReleased));
+	m_bvIsMouseReleased.Push(mouseReleased);
 	m_bvClickEvent.Push();
 }
 

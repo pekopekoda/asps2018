@@ -3,7 +3,6 @@
 #include <map>
 #include "ASSceneObject.h"
 
-extern uiCommandStruct g_uiCommands;
 //// Used with interface input query to warn program user may change currently picked field's parameters, or about different events :
 //constexpr uint8_t g_shaderColor	    = 97 ;//1 key for color on particles
 //constexpr uint8_t g_shaderTexture	= 98 ;//2 key for texture on particles
@@ -14,26 +13,24 @@ extern uiCommandStruct g_uiCommands;
 //constexpr uint8_t g_shaderGlow		= 103;//7 key for glow on particles
 constexpr char*	  g_senvMapCfg		= "Environment map";
 
-//constexpr uint8_t g_showPanelCommand = 80; // show explanations
-constexpr initializer_list<float> g_displayCoords(int value)
-{
-	const std::pair<int, initializer_list<float> > coords[] =
-	{
-		{ 0,{ 0.0, 0.0, 0.0, 0.0 } }, //default value
-		{ g_uiCommands.fields.changeType,{ 0.0f, 0.1f, 0.3f, 0.15f } }, // change_type		
-		{ g_uiCommands.fields.changeSize,{ 0.0, 0.15, 0.2, 0.2 } }, // change_size
-		{ g_uiCommands.fields.changeCenterForce,{ 0.0, 0.2, 0.42, 0.25 } }, // change_center_force	
-		{ g_uiCommands.fields.changeExtremityForce,{ 0.55, 0.0, 1.0, 0.04 } }, // change_extremity_force
-		{ g_uiCommands.fields.changeInterpolation,{ 0.55, 0.04, 1.0, 0.1 } }, // change_interpolation
-		{ g_uiCommands.scene.switchGravity,{ 0.0, 0.0, 0.1, 0.03 } }, // switch_gravity_on
-		{ g_uiCommands.scene.resetCamera,{ 0.0, 0.0, 0.0, 0.0 } }, // clear_cam
-		{ g_uiCommands.particles.emissionType,{ 0.55, 0.14, 1.0, 0.18 } }, // emission_type	
-		{ g_uiCommands.screen.showPanel,{ 0.0, 0.28, 1.0, 1.0 } },  // show_panel
-	};
+class ASScene;
 
-	for (auto p : coords)
-		if (p.first == value)
-			return p.second;
+//constexpr uint8_t g_showPanelCommand = 80; // show explanations
+
+D3DXVECTOR4 g_displayCoords(int value)
+{
+	switch (value)
+	{
+	case g_uiCommands::fields::changeType: return D3DXVECTOR4( 0.0f, 0.1f, 0.3f, 0.15f ); // change_type		
+	case g_uiCommands::fields::changeSize: return D3DXVECTOR4(0.0f, 0.15f, 0.2f, 0.2f); // change_size
+	case g_uiCommands::fields::changeCenterForce: return D3DXVECTOR4(0.0f, 0.2f, 0.42f, 0.25f);// change_center_force	
+	case g_uiCommands::fields::changeExtremityForce: return D3DXVECTOR4(0.55f, 0.0f, 1.0f, 0.04f);// change_extremity_force
+	case g_uiCommands::fields::changeInterpolation: return D3DXVECTOR4(0.55f, 0.04f, 1.0f, 0.1f);// change_interpolation
+	case g_uiCommands::scene::switchGravity: return D3DXVECTOR4(0.0f, 0.0f, 0.1f, 0.03f);// switch_gravity_on
+	case g_uiCommands::scene::resetCamera: return D3DXVECTOR4(0.0f, 0.0f, 0.0f, 0.0f);// clear_cam
+	case g_uiCommands::screen::showPanel: return D3DXVECTOR4(0.0f, 0.28f, 1.0f, 1.0f);// show_panel
+	default: return D3DXVECTOR4(0.0f, 0.0f, 0.0f, 0.0f);
+	};
 }
 
 /*The screen is a square rendered in front of the camera. It is rendered through two passes.
@@ -61,7 +58,6 @@ public:
 	void FirstPass();
 	void SecondPass();
 	void ThirdPass();
-	void Init(const char *techniqueName);
 
 	effectIntVariable m_bvDOF;
 	effectIntVariable m_bvGlow;
@@ -78,12 +74,11 @@ public:
 					
 public:
 	ASScreen();
-	~ASScreen();
+	ASScreen(ASScene* const parent);
 	void InitViews();
 	void InitShaderResources(vector<tuple<string, string>> vsBuf);
 	//Add extra resource to render from other objects
 	void AddEffectResourceVariable(effectResourceVariable* rr);
-	void InitBuffers();
 	void Render();
 };
 
@@ -175,22 +170,26 @@ void ASScreen::InitBuffers()
 	m_vBuffers = { m_firstBuffer };
 }
 
+ASScreen::ASScreen(){}
+
 void ASScreen::InitViews()
 {
 	//Render target handlers
-	textures1D renderForOtherObjects { texture1D() };
-	textures2D renderForSpecialEffects{ texture2D() };
+	textures1D renderForOtherObjects;
+	renderForOtherObjects.push_back(&texture1D());
+	textures2D renderForSpecialEffects;
+	renderForSpecialEffects.push_back(&texture2D());
 
 	//renderForSpecialEffects will be used by the swap chain to display the final result of the screen
-	ASRenderer::SetSwapChain(&renderForSpecialEffects);
+	ASRenderer::SetSwapChain(renderForSpecialEffects);
 
 	ASSceneObject::InitViews(renderForOtherObjects);
 	ASSceneObject::InitViews(renderForSpecialEffects);
 
-	for (auto t : renderForOtherObjects)
-		t.Release();
-	for (auto t : renderForSpecialEffects)
-		t.Release();
+	for (auto &t : renderForOtherObjects)
+		t->Release();
+	for (auto &t : renderForSpecialEffects)
+		t->Release();
 }
 
 void ASScreen::InitShaderResources(vector<tuple<string, string>> vsBuf)
@@ -240,15 +239,15 @@ void ASScreen::Render()
 	{
 		switch (ASUserInterface::currentKey)
 		{
-		case g_uiCommands.screen.showPanel:
+		case g_uiCommands::screen::showPanel:
 			if (m_ivShowPanel.val == 1)
 				m_ivShowPanel.Push(0);
 			else m_ivShowPanel.Push(1);
 			break;
-		case g_uiCommands.screen.shaderDof:
+		case g_uiCommands::screen::shaderDof:
 			m_bvDOF.Push(int(!m_bvDOF.val));
 			break;
-		case g_uiCommands.screen.shaderGlow:
+		case g_uiCommands::screen::shaderGlow:
 			m_bvGlow.Push(int(!m_bvGlow.val));
 			break;
 		}

@@ -78,6 +78,8 @@ public:
 	void Render();
 	void Clear();
 	ASParticles();
+	template <class T>
+	ASParticles(T* parent);
 	~ASParticles();
 };
 
@@ -108,6 +110,9 @@ public:
 		};
 	}
 	void InitBuffers();
+	ASParticlesInstances();
+	ASParticlesInstances(ASParticles *instancer, const char* meshPath);
+	~ASParticlesInstances();
 };
 
 
@@ -131,8 +136,8 @@ void ASParticles::Init(const char *techniqueName, UINT nbr)
 	vector<VERTEX_PROTOTYPE> vps;
 	vps.assign(1, vp1);
 
-	vps[0].pos		 = D3DXVECTOR3(0.1, 0, 0); //position
-	vps[0].vel		 = D3DXVECTOR3(1, 1, 1); //direction
+	vps[0].pos		 = D3DXVECTOR3(0.1f, 0.0f, 0.0f); //position
+	vps[0].vel		 = D3DXVECTOR3(1.0f, 1.0f, 1.0f); //direction
 	vps[0].type		 = int(0);//type
 	vps[0].lifespan	 = float(-1);//lifespan
 	vps[0].birth	 = float(1);//birth
@@ -227,7 +232,7 @@ void ASParticles::InitShaderResources(vector<tuple<string, string>> vsBuf)
 
 		if(name == g_pmeshCfg)
 		{
-			m_instance = make_unique<ASSceneInstance>(this, g_meshPath + value);
+			m_instance = make_unique<ASParticlesInstances>(this, g_meshPath + *value.c_str());
 		}
 		else if (name == g_ptexCfg)
 		{
@@ -273,9 +278,10 @@ void ASParticles::InitShaderResources(vector<tuple<string, string>> vsBuf)
 void ASParticles::InitViews()
 {
 
-	textures2D pRenderTargets2D(m_vEffectResourceVariable2D.Size());
-	for (auto t : pRenderTargets2D)
-		t = texture2D();
+	textures2D pRenderTargets2D;
+	int s = m_vEffectResourceVariable2D.Size();
+	for (auto i = 0; i < s;i++)
+		pRenderTargets2D.push_back(&texture2D());
 
 	int views2DNbr = pRenderTargets2D.size();
 
@@ -298,9 +304,7 @@ void ASParticles::Render()
 	m_pRenderTargetViews2D.ClearRenderTargets();
 	switch (ASUserInterface::currentKey)
 	{
-		case g_changeRate: m_ivCurrentAction.val = g_changeRate;	break;
-		case g_emissionType:
-			m_ivCurrentAction.val = g_emissionType;
+		case g_uiCommands::particles::changeRate: m_fvRate.Push(1.0);	break;
 			break;
 	}
 
@@ -316,7 +320,7 @@ void ASParticles::Render()
 		}
 	}
 
-	if (m_ivCurrentAction.val == g_changeRate && ASUserInterface::mouseWheelDelta != 0.0)
+	if (ASUserInterface::currentKey == g_uiCommands::particles::changeRate && ASUserInterface::mouseWheelDelta != 0.0)
 	{
 		float rate = m_fvRate.val;
 		rate += (ASUserInterface::mouseWheelDelta < 0.0) ? -m_rateVariation : m_rateVariation;
@@ -326,7 +330,7 @@ void ASParticles::Render()
 	}
 
 	// Set Effects Parameters
-	float _rand = D3DX_PI * 2.0f;
+	double _rand = D3DX_PI * 2.0f;
 	m_fvRandZ.Push(RAND(-_rand, _rand));
 	m_fvRandY.Push(RAND(-_rand, _rand));
 	m_fvRandX.Push(RAND(-_rand, _rand));
@@ -343,4 +347,7 @@ void ASParticles::Render()
 }
 
 void ASParticles::Clear(){}
-ASParticles::ASParticles(): m_isFirstFrame(true){}
+ASParticles::ASParticles(): m_isFirstFrame(true)
+{}
+
+ASParticles::~ASParticles(){}

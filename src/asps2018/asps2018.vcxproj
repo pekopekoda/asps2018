@@ -119,8 +119,9 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="..\ASCamera.h" />
-    <ClInclude Include="..\ASDisplayDevice.h" />
+    <ClInclude Include="..\ASRenderer.h" />
     <ClInclude Include="..\ASScene.h" />
+    <ClInclude Include="..\ASSceneInstance.h" />
     <ClInclude Include="..\ASSceneObject.h" />
     <ClInclude Include="..\ASEnvironment.h" />
     <ClInclude Include="..\ASFields.h" />
@@ -131,10 +132,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\ASMesh.cpp" />
-    <ClCompile Include="..\ASParticles.cpp" />
     <ClCompile Include="..\ASRenderMain.cpp" />
-    <ClCompile Include="..\ASScene.cpp" />
-    <ClCompile Include="..\ASSceneObject.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

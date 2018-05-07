@@ -14,10 +14,6 @@ class ASCamera
 	D3DXMATRIX		m_matView;
 	effectMatrixVariable m_mvView;
 
-protected:
-	ASCamera();
-	~ASCamera();
-
 public:
 	const float &x; //Public access to private coordinates, read only
 	const float &y; //Public access to private coordinates, read only
@@ -36,6 +32,10 @@ public:
 	void SetRotation(float x, float y);
 	void Rotate(float x, float y);
 	void Update(D3DXVECTOR2 cursorOffset, int mouseButton, float mouseWheelDelta);
+	ASCamera();
+	template <class T>
+	ASCamera(T* parent);
+	~ASCamera();
 };
 
 D3DXVECTOR2 ASCamera::GetRotation()
