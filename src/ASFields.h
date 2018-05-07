@@ -6,16 +6,18 @@
 constexpr uint8_t g_maxFields = 50;				//number of fields in program
 // The following are used with interface input query to warn the program that the user may change the parameters of the currenlty selected field
 //or about different other events
-constexpr uint8_t g_changeType = 0x54;			// type may be changed
-constexpr uint8_t g_changeSize = 0x53;			// size may be changed
-constexpr uint8_t g_changeCenterForce = 0x43;	// center force may be changed
-constexpr uint8_t g_changeExtremityForce = 0x58;// extremity force may be changed
-constexpr uint8_t g_changeInterpolation = 0x49;	// interpolation may be changed
-constexpr uint8_t g_addFields = 107;			// Increase the current fields number
-constexpr uint8_t g_subFields = 109;			// Decrease the current fields number
-constexpr uint8_t g_switchVisibility = 0x48;	// visibillity on/off
-constexpr char*	  g_FieldnbrCfg = "Fields initial number";
-
+//constexpr struct fieldCommandStruct
+//{
+//	const uint8_t changeType = 0x54;			// type may be changed
+//	const uint8_t changeSize = 0x53;			// size may be changed
+//	const uint8_t changeCenterForce = 0x43;	// center force may be changed
+//	const uint8_t changeExtremityForce = 0x58;// extremity force may be changed
+//	const uint8_t changeInterpolation = 0x49;	// interpolation may be changed
+//	const uint8_t addFields = 107;			// Increase the current fields number
+//	const uint8_t subFields = 109;			// Decrease the current fields number
+//	const uint8_t switchVisibility = 0x48;	// visibillity on/off
+//} g_fieldCommands;
+constexpr char*	  fieldnbrCfg = "Fields initial number";
 
 class ASFields : public ASSceneObject
 {
@@ -61,7 +63,14 @@ public:
 
 	effectIntVariable m_bvEmitAtCenter;
 	effectIntVariable m_ivFieldsNumber;
-	effectFloatVariable m_fvWidth;
+	effectIntVariable m_ivCurrentAction;
+	effectIntVariable m_ivTypeUpdate;
+	effectFloatVariable m_fvSizeUpdate;
+	effectVectorVariable m_vvFieldPositionUpdate;
+	effectFloatVariable m_fvCenterForceUpdate;
+	effectFloatVariable m_fvExtremityForceUpdate;
+	effectFloatVariable m_fvForceInterpolationUpdate;
+
 	bool m_areDisplayed = true;
 	int m_fieldsNumber = 10;
 	renderTargetViews m_pRenderTargetViews2D1D;
@@ -83,11 +92,11 @@ void ASFields::FirstPass()
 
 	pBuffers[0] = m_firstBuffer;
 	// Point to the correct output buffer
-	m_renderer->SetInputLayout(m_layout);
-	m_renderer->SetVertexBuffers(0, 1, pBuffers, stride, offset);
-	m_renderer->SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_LINELIST);
+	ASRenderer::SetInputLayout(m_layout);
+	ASRenderer::SetVertexBuffers(0, 1, pBuffers, stride, offset);
+	ASRenderer::SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_LINELIST);
 	pBuffers[0] = m_secondBuffer;
-	m_renderer->StreamOutputSetTargets(1, pBuffers, offset);
+	ASRenderer::StreamOutputSetTargets(1, pBuffers, offset);
 
 	// Draw
 	D3D10_TECHNIQUE_DESC techDesc;
@@ -95,10 +104,10 @@ void ASFields::FirstPass()
 	m_technique->GetDesc(&techDesc);
 
 	m_technique->GetPassByIndex(0)->Apply(0);
-	m_renderer->Draw(g_maxFields * 2);
+	ASRenderer::Draw(g_maxFields * 2);
 
 	pBuffers[0] = NULL;
-	m_renderer->StreamOutputSetTargets(1, pBuffers, offset);
+	ASRenderer::StreamOutputSetTargets(1, pBuffers, offset);
 }
 
 void ASFields::SecondPass()
@@ -107,10 +116,10 @@ void ASFields::SecondPass()
 	UINT stride[1] = { sizeof(VERTEX_PROTOTYPE) };
 	UINT offset[1] = { 0 };
 	pBuffers[0] = m_firstBuffer;
-	m_renderer->SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_LINELIST);
-	m_renderer->SetVertexBuffers(0, 1, pBuffers, stride, offset);
+	ASRenderer::SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_LINELIST);
+	ASRenderer::SetVertexBuffers(0, 1, pBuffers, stride, offset);
 	m_technique->GetPassByIndex(1)->Apply(0);
-	m_renderer->Draw();
+	ASRenderer::Draw();
 }
 
 void ASFields::UpdateFieldsNumber(int incr)
@@ -130,17 +139,21 @@ void ASFields::InitShaderResources(vector<tuple<string, string>> vsBuf)
 	m_rrFieldsTypeSize = effectResourceVariable("txFieldsTypeSize");
 	m_rrMainRenderResource = effectResourceVariable("txFields");
 	m_ivFieldsNumber = effectIntVariable("g_fieldNbr");
-	//m_pRenderTechnique = m_renderer->GetTechniqueByName("RenderFields");
 	m_bvEmitAtCenter = effectIntVariable("g_emAtCenter");
-	m_fvWidth = effectFloatVariable("g_width");
-	//m_fvWidth.Push(WIDTH / 100.0f);
+	m_ivCurrentAction = effectIntVariable("g_fieldsInterface");
+	m_ivTypeUpdate = effectIntVariable("g_fieldTypeUpdate");
+	m_fvSizeUpdate = effectFloatVariable("g_fieldSizeUpdate");
+	m_fvCenterForceUpdate = effectFloatVariable("g_fieldCenterForceUpdate");
+	m_fvExtremityForceUpdate = effectFloatVariable("g_fieldExtremityForceUpdate");
+	m_fvForceInterpolationUpdate = effectFloatVariable("g_fieldForceInterpolationUpdate");
+	m_vvFieldPositionUpdate = effectVectorVariable("g_fieldPositionUpdate");
 
 	for (auto it = vsBuf.begin(); it != vsBuf.end(); it++)
 	{
 		string name = std::get<0>(*it);
 		string value = std::get<1>(*it);
 	
-		if (name == g_FieldnbrCfg)
+		if (name == g_fieldCommands.fieldnbrCfg)
 		{
 			m_ivFieldsNumber.Push(atoi(value.c_str()));
 		}
@@ -179,11 +192,11 @@ void ASFields::InitViews()
 void ASFields::InitBuffers()
 {
 	const char* techniqueName = "UpdateFields";
-	m_technique = m_renderer->GetTechniqueByName(techniqueName);
+	m_technique = ASRenderer::GetTechniqueByName(techniqueName);
 	D3D10_PASS_DESC passDesc;
 	m_technique->GetPassByIndex(0)->GetDesc(&passDesc);
 	const vector<D3D10_INPUT_ELEMENT_DESC> proto = GetLayoutPrototype();
-	m_renderer->CreateInputLayout(GetLayoutPrototype(), passDesc, &m_layout);
+	ASRenderer::CreateInputLayout(GetLayoutPrototype(), passDesc, &m_layout);
 
 	const UINT nbr = g_maxFields * 2;
 	VERTEX_PROTOTYPE vp1;
@@ -223,8 +236,8 @@ void ASFields::InitBuffers()
 	vbInitData.SysMemPitch = _size;
 	vbInitData.SysMemSlicePitch = _size;
 	//Buffer creation
-	m_renderer->CreateBuffer(vbdesc, vbInitData, &m_firstBuffer);
-	m_renderer->CreateBuffer(vbdesc, vbInitData, &m_secondBuffer);
+	ASRenderer::CreateBuffer(vbdesc, vbInitData, &m_firstBuffer);
+	ASRenderer::CreateBuffer(vbdesc, vbInitData, &m_secondBuffer);
 	m_vBuffers = { m_firstBuffer , m_secondBuffer };
 }
 
@@ -234,27 +247,33 @@ void ASFields::InitBuffers()
 void ASFields::Render()
 {	
 	m_pRenderTargetViews2D.ClearRenderTargets();
-	switch (m_env->userInput.currentKey)
+	if (!ASUserInterface::keyReleased)
 	{
-		case g_changeType			   : m_env->userInput.m_ivCurrentAction.val = g_changeType				; break;
-		case g_changeSize			   : m_env->userInput.m_ivCurrentAction.val = g_changeSize				; break;
-		case g_changeCenterForce	   : m_env->userInput.m_ivCurrentAction.val = g_changeCenterForce		; break;
-		case g_changeExtremityForce	   : m_env->userInput.m_ivCurrentAction.val = g_changeExtremityForce	; break;
-		case g_changeInterpolation	   : m_env->userInput.m_ivCurrentAction.val = g_changeInterpolation		; break;
-		case g_addFields:
-			if (m_env->userInput.keyReleased)
-				UpdateFieldsNumber(1);
-			break;
-		case g_subFields:
-			if (m_env->userInput.keyReleased)
-				UpdateFieldsNumber(-1);
-			break;
-		case g_switchVisibility		   :
-			if(m_env->userInput.keyReleased)
-				m_areDisplayed = !m_areDisplayed;
-			break;
+		switch (ASUserInterface::currentKey)
+		{
+			case g_fieldCommands.changeType: m_ivTypeUpdate.Push(int(ASUserInterface::mouseWheelDelta)); break;
+			case g_fieldCommands.changeSize: m_fvSizeUpdate.Push(ASUserInterface::mouseWheelDelta); break;
+			case g_fieldCommands.changeCenterForce: m_fvCenterForceUpdate.Push(ASUserInterface::mouseWheelDelta); break;
+			case g_fieldCommands.changeExtremityForce: m_fvExtremityForceUpdate.Push(ASUserInterface::mouseWheelDelta); break;
+			case g_fieldCommands.changeInterpolation: m_fvForceInterpolationUpdate.Push(ASUserInterface::mouseWheelDelta); break;
+			case VK_LEFT: m_vvFieldPositionUpdate.Push(D3DXVECTOR3(-1.0f, 0.0f, 0.0f)); break;
+			case VK_RIGHT: m_vvFieldPositionUpdate.Push(D3DXVECTOR3(1.0f, 0.0f, 0.0f)); break;
+			case VK_UP: m_vvFieldPositionUpdate.Push(D3DXVECTOR3(0.0f, 1.0f, 0.0f)); break;
+			case VK_DOWN: m_vvFieldPositionUpdate.Push(D3DXVECTOR3(0.0f, -1.0f, 0.0f)); break;
+			case g_fieldCommands.addFields:
+		}
 	}
-	m_fvWidth.Push(m_renderer->GetDimensions().x / (float(g_maxFields) * 2.0f));
+	else
+	{
+		switch (ASUserInterface::currentKey)
+		{
+		case g_fieldCommands.addFields: UpdateFieldsNumber(1); break;
+		case g_fieldCommands.subFields: UpdateFieldsNumber(-1); break;
+		case g_fieldCommands.switchVisibility: m_areDisplayed = !m_areDisplayed; break;
+		}
+	}
+
+	//m_fvSizeUpdate.Push(ASRenderer::GetDimensions().x / (float(g_maxFields) * 2.0f));
 	//Set correct render targets
 	m_pRenderTargetViews2D1D.ClearRenderTargets();
 	m_pRenderTargetViews2D1D.ClearDepthStencilView();

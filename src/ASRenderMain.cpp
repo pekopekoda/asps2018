@@ -4,10 +4,7 @@
 #include "ASUserInterface.h"
 
 //global objects
-ASDisplayDevice* g_displayDevice = ASDisplayDevice::GetInstance();
-typedef ASUserInterface g_ui;
-ASEnvironment* g_env;
-ASScene* g_scene;
+ASScene g_scene;
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLine, int nCmdShow);
@@ -22,14 +19,14 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	HDC hdc;
 	RECT _rc;
 
-	if(g_ui::GetInput(message, wParam, lParam))
+	if(ASUserInterface::GetInput(message, wParam, lParam))
 		return 0;
 	switch (message)
 	{
 	case WM_PAINT:
 		hdc = BeginPaint(hWnd, &ps);
 		GetClientRect(hWnd, &_rc);
-		g_displayDevice->Resize(_rc.right, _rc.bottom);
+		ASRenderer::Resize(_rc.right, _rc.bottom);
 		EndPaint(hWnd, &ps);
 		break;
 	case WM_DESTROY:
@@ -55,29 +52,25 @@ int WINAPI wWinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdL
 	LRESULT(CALLBACK *proc)(HWND, UINT, WPARAM, LPARAM);
 	proc = WndProc;
 
-	if(FAILED(g_displayDevice->OpenWindow(hInstance, nCmdShow, proc)))
+	if(FAILED(ASRenderer::OpenWindow(hInstance, nCmdShow, proc)))
 		return 1;
 
 	srand((unsigned)time(NULL));
 
-	g_displayDevice->InitRasterizer();
-	g_displayDevice->InitBlendstate();
-	g_displayDevice->CreateEffect();
-
-
-	g_env = ASEnvironment::GetInstance();
-	g_scene = ASScene::GetInstance();
+	ASRenderer::InitRasterizer();
+	ASRenderer::InitBlendstate();
+	ASRenderer::CreateEffect();
 
 	if (FAILED(g_displayDevice->InitViewport()))
 	{
-		g_displayDevice->Clear();
-		g_scene->Clear();
+		ASRenderer::Clear();
+		g_scene.Clear();
 		return 1;
 	}
 	g_displayDevice->CreateDepthStencilState();
 
 	vector<std::string> buf;
-	buf = g_ui::GetUserFileBuffer();
+	buf = ASUserInterface::GetUserFileBuffer();
 	g_env->InitWorld(buf);
 	g_scene->Init(buf);
 

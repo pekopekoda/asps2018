@@ -26,23 +26,9 @@
 //--------------------------------------------------------------------------------------
 // Constant Buffer Variables
 //--------------------------------------------------------------------------------------
-uniform int g_dispCoordsSize = 15;
-struct hudcoords { int index; float4 coords; };
-hudcoords g_dispCoords[] = //Display coords in HUD single texture
-{
-	{0							,float4(0.0,  0.0 , 0.0 , 0.0 )},
-	{ CHANGE_TYPE				,float4(0.0 , 0.1 , 0.3 , 0.15)}, // CHANGE_TYPE					
-	{ CHANGE_SIZE				,float4(0.0 , 0.15, 0.2 , 0.2) }, // CHANGE_SIZE					
-	{ CHANGE_CENTER_FORCE		,float4(0.0 , 0.2 , 0.42, 0.25) }, // CHANGE_CENTER_FORCE			
-	{ CHANGE_EXTREMITY_FORCE	,float4(0.55, 0.0 , 1.0 , 0.04) }, // CHANGE_EXTREMITY_FORCE		
-	{ CHANGE_INTERPOLATION		,float4(0.55, 0.04, 1.0 , 0.1) }, // CHANGE_INTERPOLATION
-	{ GRAVITY_ON				,float4(0.0 , 0.0 , 0.1 , 0.03) }, // SWITCH_GRAVITY_ON
-	{ GRAVITY_OFF				,float4(0.0 , 0.05, 0.1 , 0.1) }, // SWITCH_GRAVITY_OFF
-	{ EMISSION_TYPE				,float4(0.55, 0.14, 1.0 , 0.18) }, // EMISSION_TYPE			
-	{ CLEAR_CAM					,float4(0.0 , 0.0 , 0.0 , 0.0) }, // CLEAR_CAM
-	{ SHOW_PANEL				,float4(0.0, 0.28, 1.0 , 1.0 ) }  // SHOW_PANEL
+int g_showPanel;
+float4 g_displayCoords; //Display coords in HUD single texture
 
-};
 float4 g_colorCoords	= float4(0.0, 0.25,0.24, 0.31) ;
 float4 g_texCoords		= float4(0.0, 0.31, 0.24, 0.37) ;
 float4 g_toonCoords		= float4(0.0, 0.39, 0.24, 0.42) ;
@@ -52,10 +38,25 @@ float4 g_DOFCoords		= float4(0.0, 0.55, 0.24, 0.6) ;
 float4 g_glowCoords		= float4(0.0, 0.6, 0.24, 1.0) ;
 float4 g_clickExpl 		= float4(0.0, 0.75, 1.0 , 1.0 ) ;
 
+//{0, float4(0.0, 0.0, 0.0, 0.0)},
+//{ CHANGE_TYPE				,float4(0.0 , 0.1 , 0.3 , 0.15) }, // CHANGE_TYPE					
+//{ CHANGE_SIZE				,float4(0.0 , 0.15, 0.2 , 0.2) }, // CHANGE_SIZE					
+//{ CHANGE_CENTER_FORCE		,float4(0.0 , 0.2 , 0.42, 0.25) }, // CHANGE_CENTER_FORCE			
+//{ CHANGE_EXTREMITY_FORCE	,float4(0.55, 0.0 , 1.0 , 0.04) }, // CHANGE_EXTREMITY_FORCE		
+//{ CHANGE_INTERPOLATION		,float4(0.55, 0.04, 1.0 , 0.1) }, // CHANGE_INTERPOLATION
+//{ GRAVITY_ON				,float4(0.0 , 0.0 , 0.1 , 0.03) }, // SWITCH_GRAVITY_ON
+//{ GRAVITY_OFF				,float4(0.0 , 0.05, 0.1 , 0.1) }, // SWITCH_GRAVITY_OFF
+//{ EMISSION_TYPE				,float4(0.55, 0.14, 1.0 , 0.18) }, // EMISSION_TYPE			
+//{ CLEAR_CAM					,float4(0.0 , 0.0 , 0.0 , 0.0) }, // CLEAR_CAM
+//{ SHOW_PANEL				,float4(0.0, 0.28, 1.0 , 1.0) }  // SHOW_PANEL
+
+
 static const float PI = 3.14159265f;
 float3 LightDirection = {-0.57735,-0.57735,0.57735};
 float  FocusDist	  = 25.0;
 float  FocusRange	  = 0.009;
+
+int g_clickEvent;
 
 float  ParticlesSize  = 3;
 //matrix matWorldViewProjection;
@@ -71,11 +72,16 @@ float g_randX, g_randY, g_randZ;
 uint g_maxParticles;		// Max particles buffer can contain
 float g_timeToNextEmit;				// Trigger for the emitter to emit
 float g_rate;				// Particles to emit per second
-float g_width;				// viewport width / 100
+
+//Variables for Fields 
+float  g_fieldCenterForceUpdate;
+float  g_fieldExtremityForceUpdate;
+float  g_fieldForceInterpolationUpdate;
+float3 g_fieldPositionUpdate;
+float g_fieldSizeUpdate;				// viewport width / 100
 int	  g_fieldNbr;		//Number of fields to render at current frame
-int g_userInterface;
+int g_fieldTypeUpdate;
 float g_plusMinus;			// If different than 0, increments or decrements field's property specified by g_userInterface
-float3 g_translate;
 
 float RESISTANCE;
 float GRAVITY;

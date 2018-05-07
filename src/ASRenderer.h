@@ -34,113 +34,97 @@ void test(HRESULT hr, char *errTitle)
 ////////////////////////////////////////////////////////////////////////////////////////////
 class ASRenderer
 {
-	friend class shaderEffect;
-	friend class shaderResource;
-	friend class ASSceneObject;
-
+	friend class renderTargetViews;
 	ASRenderer();
 	~ASRenderer();
-	//As we want only a unique instance, we use a singleton
-	static ASRenderer* m_singleton;
 
-	static ID3D10Device*   m_d3dDevice;
-
-
-	//////////////////////////////////////////////////////////////////////////////////
+	static ID3D10Device *m_d3dDevice;
 	//m_window contains the dimensions of the window and a handle to the window object
-	struct
+	static struct
 	{
-		//Window//////////////////////////////////////////////////////////////////////
-		HINSTANCE						    hInst;									//
-		HWND							    hWnd;									//
-																					//Viewport////////////////////////////////////////////////////////////////////
-		LONG								width;									//
-		LONG								height;									//
-	} m_window;																		//
-																					//////////////////////////////////////////////////////////////////////////////////
-	D3D10_DRIVER_TYPE				    m_d3dDriverType;							//
-																					//The swap chain is the object to manage the buffer which will be presented to the screen
-																					//as the final render result
-	IDXGISwapChain*					    m_d3dSwapChain;								//
-																					//The effect is the object allowing to create resource from C++ to the GPU/HLSL shaders
+		//Window
+		HINSTANCE hInst ;									
+		HWND		 hWnd  ;									
+		//Viewport		 
+		LONG		 width;							
+		LONG		 height;					
+	} m_window;																		
+
+	static D3D10_DRIVER_TYPE			m_d3dDriverType;
+	//The swap chain is the object to manage the buffer which will be presented to the screen
+	//as the final render result
+	static IDXGISwapChain*				m_d3dSwapChain;								
+	//The effect is the object allowing to create resource from C++ to the GPU/HLSL shaders
 	static ID3D10Effect*				m_d3dEffect;
-	//////////////////////////////////////////////////////////////////////////////////
+
 
 public:
-
-	IDXGISwapChain * GetD3DSwapChain();
-	//Returns a single instance of ASRenderer as we want a unique instance during runtime
-	static ASRenderer* GetInstance();
-
 	//Open window
-	HRESULT OpenWindow(HINSTANCE hInstance, int nCmdShow, LRESULT(CALLBACK *)(HWND, UINT, WPARAM, LPARAM));
+	static HRESULT OpenWindow(HINSTANCE hInstance, int nCmdShow, LRESULT(CALLBACK *)(HWND, UINT, WPARAM, LPARAM));
 	//Init viewport
-	HRESULT InitViewport();
-	D3DXVECTOR2 GetDimensions();
+	static HRESULT InitViewport();
+	static D3DXVECTOR2 GetDimensions();
 	//Called during window resize event
-	void	Resize(int width, int height);
-
-	//Return time elapsed since the program started (float whom the integer part equals the seconds)
-	float GetCurrentFrameTime();
-	//Return the cursor position relative to the window dimensions
-	D3DXVECTOR2 GetMousePosition();
+	static void	Resize(int width, int height);
 
 	//Link the swap chain to a render texture
-	HRESULT SetSwapChain(ID3D10Texture2D **pRenderTarget);
+	static HRESULT SetSwapChain(textures2D pRenderTarget);
 	//Presents the final render result to the screen
-	void PresentSwapChain();
+	static void PresentSwapChain();
 	//Create the interface with the GPU
-	HRESULT CreateEffect();
+	static HRESULT CreateEffect();
 
 	//Create the depth stencil state
-	HRESULT CreateDepthStencilState();
+	static HRESULT CreateDepthStencilState();
 	//Create the rasterizer state
-	HRESULT InitRasterizer();
+	static HRESULT InitRasterizer();
 	//Create the blend state
-	HRESULT InitBlendstate();
+	static HRESULT InitBlendstate();
 	//Reserve the layout passed in argument for future vertex buffer assignation
-	HRESULT CreateInputLayout(const std::vector<D3D10_INPUT_ELEMENT_DESC> pInputElementDescs, D3D10_PASS_DESC pShaderBytecodeWithInputSignature, ID3D10InputLayout**ppInputLayout);
+	static HRESULT CreateInputLayout(const std::vector<D3D10_INPUT_ELEMENT_DESC> pInputElementDescs, D3D10_PASS_DESC pShaderBytecodeWithInputSignature, ID3D10InputLayout**ppInputLayout);
 	//Reserve vertex buffer size in memory
-	HRESULT CreateBuffer(D3D10_BUFFER_DESC pDesc, D3D10_SUBRESOURCE_DATA pInitialData, ID3D10Buffer **ppBuffer);
+	static HRESULT CreateBuffer(D3D10_BUFFER_DESC pDesc, D3D10_SUBRESOURCE_DATA pInitialData, ID3D10Buffer **ppBuffer);
 	//Reserve vertex buffer size in memory
-	HRESULT CreateBuffer(D3D10_BUFFER_DESC pDesc, ID3D10Buffer **ppBuffer);
+	static HRESULT CreateBuffer(D3D10_BUFFER_DESC pDesc, ID3D10Buffer **ppBuffer);
+	static HRESULT CreateShaderResourceView(ID3D10Resource * tex, D3D10_SHADER_RESOURCE_VIEW_DESC * srvDesc, ID3D10ShaderResourceView ** srv);
+
 
 	//Create new effect technique with specific name
-	ID3D10EffectTechnique*				 GetTechniqueByName(LPCSTR techniqueName);
-	//Create new effect variable with specific name
-	ID3D10EffectVariable*				 GetVariableByName(LPCSTR textureName);
+	static ID3D10EffectTechnique* GetTechniqueByName(LPCSTR techniqueName);
+
+	static ID3D10EffectScalarVariable* GetVariableByName(LPCSTR techniqueName);
 
 	//Set the layout as the current input layout before vertex draw
-	void SetInputLayout(ID3D10InputLayout *pIL);
+	static void SetInputLayout(ID3D10InputLayout *pIL);
 	//Used with the geometry shader to determine the tessellation of the extra vertices draw
-	void SetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY prim = D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	static void SetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY prim = D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	//Set this veertex buffer as the current input vertex buffer before draw
-	void SetVertexBuffers(UINT StartSlot, UINT NumBuffers, ID3D10Buffer **ppVertexBuffers, UINT *pStrides, UINT *pOffsets);
+	static void SetVertexBuffers(UINT StartSlot, UINT NumBuffers, ID3D10Buffer **ppVertexBuffers, UINT *pStrides, UINT *pOffsets);
 	//For vertex instancing (used with particles for example), set an index buffer
-	void SetIndexBuffer(ID3D10Buffer * ppVertexBuffer, UINT offset, DXGI_FORMAT format = DXGI_FORMAT_R32_UINT);
+	static void SetIndexBuffer(ID3D10Buffer * ppVertexBuffer, UINT offset, DXGI_FORMAT format = DXGI_FORMAT_R32_UINT);
 	//Set the target buffer for the vertex draw
-	void StreamOutputSetTargets(UINT nbr, ID3D10Buffer** pBuffers, UINT* offset);
+	static void StreamOutputSetTargets(UINT nbr, ID3D10Buffer** pBuffers, UINT* offset);
 	//Set the shader resources
-	void SetShaderResources();
+	static void SetShaderResources();
 
 	//swap draw and stream buffers
-	void SwapBuffers();
+	static void SwapBuffers();
 	//Draw vertices to render
-	void Draw(UINT vtxCnt = 0);
+	static void Draw(UINT vtxCnt = 0);
 	//Draw instance vertices to render
-	void DrawInstance(UINT IndexCountPerInstance, UINT InstanceCount, UINT StartIndexLocation = 0, INT BaseVertexLocation = 0, UINT StartInstanceLocation = 0);
-	int Clear();
+	static void DrawInstance(UINT IndexCountPerInstance, UINT InstanceCount, UINT StartIndexLocation = 0, INT BaseVertexLocation = 0, UINT StartInstanceLocation = 0);
+	static void Clear();
 };
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
-HRESULT ASRenderer::SetSwapChain(ID3D10Texture2D **pRenderTarget)
+HRESULT ASRenderer::SetSwapChain(textures2D pRenderTarget)
 {
 	HRESULT hr = S_OK;
 	//Set swap chain buffer///////////////////////////////////////////////////////////////////////////////
-	hr = m_d3dSwapChain->GetBuffer(0, __uuidof(ID3D10Texture2D), (LPVOID*)pRenderTarget);
+	hr = m_d3dSwapChain->GetBuffer(0, __uuidof(ID3D10Texture2D), (LPVOID*)pRenderTarget.data);
 	test(hr);
 	return hr;
 }
@@ -153,22 +137,6 @@ void ASRenderer::PresentSwapChain()
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-ASRenderer* ASRenderer::m_singleton = NULL;
-ASRenderer* ASRenderer::GetInstance()
-{
-	if (m_singleton == NULL)
-	{
-		m_singleton = new ASRenderer();
-		return m_singleton;
-	}
-
-	return m_singleton;
-}
-
-IDXGISwapChain* ASRenderer::GetD3DSwapChain()
-{
-	return m_d3dSwapChain;
-}
 //--------------------------------------------------------------------------------------
 // Register class and create window
 //--------------------------------------------------------------------------------------
@@ -193,6 +161,8 @@ HRESULT ASRenderer::OpenWindow(HINSTANCE hInstance, int nCmdShow, LRESULT(CALLBA
 		return E_FAIL;
 
 	// Create window
+	m_window.width = WIDTH;
+	m_window.height = HEIGHT;
 	m_window.hInst = hInstance;
 	RECT rc = { 0, 0, m_window.width, m_window.height };
 	AdjustWindowRect(&rc, WS_OVERLAPPEDWINDOW, FALSE);
@@ -203,6 +173,8 @@ HRESULT ASRenderer::OpenWindow(HINSTANCE hInstance, int nCmdShow, LRESULT(CALLBA
 		return E_FAIL;
 
 	ShowWindow(m_window.hWnd, nCmdShow);
+
+	m_d3dDriverType = D3D10_DRIVER_TYPE_NULL;
 
 	//Direct3D device///////////////////////////////////////////////////////////////////////////////////
 	/*RECT rc;
@@ -278,35 +250,6 @@ void ASRenderer::Resize(int width, int height)
 {
 	m_window.width = width;
 	m_window.height = height;
-}
-
-float ASRenderer::GetCurrentFrameTime()
-{
-	// Update our time
-	float t = 0.0f;
-	if (m_d3dDriverType == D3D10_DRIVER_TYPE_REFERENCE)
-	{
-		t += (float)D3DX_PI * 0.0125f;
-	}
-	else
-	{
-		static DWORD dwTimeStart = 0;
-		DWORD dwTimeCur = GetTickCount();
-		if (dwTimeStart == 0)
-			dwTimeStart = dwTimeCur;
-		t = (dwTimeCur - dwTimeStart) / 1000.0f;
-	}
-	return t;
-}
-
-D3DXVECTOR2 ASRenderer::GetMousePosition()
-{
-	POINT ptCursor;
-	D3DXVECTOR2 mp;
-	ptCursor.x = long(mp.x);
-	ptCursor.y = long(mp.y);
-	ScreenToClient(m_window.hWnd, &ptCursor);
-	return mp;
 }
 
 HRESULT ASRenderer::CreateDepthStencilState()
@@ -419,6 +362,13 @@ HRESULT ASRenderer::CreateBuffer(D3D10_BUFFER_DESC pDesc, ID3D10Buffer ** ppBuff
 	return hr;
 }
 
+inline HRESULT ASRenderer::CreateShaderResourceView(ID3D10Resource *tex, D3D10_SHADER_RESOURCE_VIEW_DESC *srvDesc, ID3D10ShaderResourceView **srv)
+{
+	m_d3dDevice->CreateShaderResourceView(tex, srvDesc, srv);
+}
+
+
+
 ID3D10EffectTechnique* ASRenderer::GetTechniqueByName(LPCSTR techniqueName)
 {
 	return m_d3dEffect->GetTechniqueByName(techniqueName);
@@ -474,35 +424,16 @@ void ASRenderer::SetShaderResources()
 	m_d3dDevice->PSSetShaderResources(0, 5, pSRV);
 }
 
-int ASRenderer::Clear()
+void ASRenderer::Clear()
 {
 
 	if (m_d3dDevice)	m_d3dDevice->ClearState();
 	if (m_d3dDevice)	m_d3dDevice->Release();
 	if (m_d3dSwapChain)	m_d3dSwapChain->Release();
 	if (m_d3dEffect)	m_d3dEffect->Release();
-
-	if (m_singleton != NULL)
-	{
-		delete(m_singleton);
-		m_singleton = NULL;
-	}
-	return 0;
 }
 
-ASRenderer::ASRenderer()
-{
-	m_window.width = WIDTH;
-	m_window.height = HEIGHT;
-	m_window.hInst = NULL;
-	m_window.hWnd = NULL;
-	m_d3dDriverType = D3D10_DRIVER_TYPE_NULL;
-	m_d3dDevice = NULL;
-	m_d3dSwapChain = NULL;
-	m_d3dEffect = NULL;
-
-	
-}
+ASRenderer::ASRenderer(){}
 ASRenderer::~ASRenderer() {}
 
 ////////////////////////////////////////////////////////////////////////////////////////////
@@ -581,28 +512,10 @@ using textures2D = vector<texture2D>;
 ////////////////////////////////////////////////////////////////////////////////////////////
 //These classes manage the render resources variables within wrappers.
 
-////Mother classes giving common access to d3dEffect and d3dDevices objects
-ID3D10Effect **const shaderEffect::m_d3dEffect = &ASRenderer::m_d3dEffect;
-class shaderEffect
-{
-protected:
-	static ID3D10Effect **const m_d3dEffect;
-};
-
-ID3D10Device **const shaderResource::m_d3dDevice = &ASRenderer::m_d3dDevice;
-class shaderResource
-{
-protected:
-	template<class Args&&...>
-	virtual shaderResource(Args&&...) {}
-	virtual ~shaderResource() {}
-	static ID3D10Device **const m_d3dDevice;
-};
-
 
 ////Shader Resources wrappers
 template<class T>
-class effectScalarVariable : public shaderEffect
+class effectScalarVariable 
 {
 protected:
 	//The variable used to pass int and float values
@@ -610,7 +523,7 @@ protected:
 	virtual void Init(char* name)
 	{
 		//Get the corresponding variable in the shader by its name
-		var = (*m_d3dEffect)->GetVariableByName(name)->AsScalar();
+		var = ASRenderer::GetVariableByName(name)->AsScalar();
 	} 
 	effectScalarVariable() {}
 
@@ -652,33 +565,25 @@ public:
 	effectFloatVariable(char* name) { Init(name); }
 };
 
-class effectVectorVariable: public shaderEffect
+class effectVectorVariable
 {
 	ID3D10EffectVectorVariable *var;
 	virtual void Init(LPCSTR name)
 	{
 		//Get the corresponding variable in the shader by its name
-		var = (*m_d3dEffect)->GetVariableByName(name)->AsVector();
+		var = ASRenderer::GetVariableByName(name)->AsVector();
 	}
 public:
-	float x, y, z;
-	effectVectorVariable() {}
-	void Push(D3DXVECTOR3 v)
+	template <typename ...Args>
+	void Push(Args&& ...args)
 	{
 		//Sends the value updated to the shader variable
-		x = v.x;
-		y = v.y;
-		z = v.z;
-		var->SetFloatVector(v);
-	}
-	void Push(float _x, float _y, float _z)
-	{
-		Push(D3DXVECTOR3(_x, _y, _z));
+		var->SetFloatVector(std::forward<Args>args);
 	}
 	effectVectorVariable(char* name) { Init(name); }
 };
 
-class effectMatrixVariable: shaderEffect
+class effectMatrixVariable
 {
 	ID3D10EffectMatrixVariable* var;
 public:
@@ -686,7 +591,7 @@ public:
 	effectMatrixVariable(char* name)
 	{
 		//Get the corresponding variable in the shader by its name
-		var = (*m_d3dEffect)->GetVariableByName(name)->AsMatrix();
+		var = ASRenderer::GetVariableByName(name)->AsMatrix();
 	}
 
 	void Push()
@@ -695,7 +600,7 @@ public:
 		var->SetMatrix((float*)&m);
 	}
 
-	void Push(D3DXMATRIX &&newM)
+	void Push(D3DXMATRIX &newM)
 	{
 		m = newM;
 		Push();
@@ -706,7 +611,7 @@ public:
 //These classes manage the render resources views (a render resource is a texture on which a previous pass has been rendered. It is 
 //then usually used by another pass to retrieve informations of the previous render pass).
 
-class texture1D: public shaderResource
+class texture1D
 {
 	ID3D10Texture1D *t;
 public:
@@ -715,12 +620,12 @@ public:
 	texture1D(unsigned int width = WIDTH);
 	texture1D(unsigned int width)
 	{
-		test((*m_d3dD3vice)->CreateTexture1D(&*g_desc1D, NULL, &t));
+		test(ASRenderer::CreateTexture1D(&*g_desc1D, NULL, &t));
 	}
 	ULONG Release() { return t->Release(); }
 };
 
-class texture2D: public shaderResource
+class texture2D
 {
 	ID3D10Texture2D *t;
 public:
@@ -729,18 +634,21 @@ public:
 	texture2D(unsigned int width = WIDTH, unsigned int height = HEIGHT);
 	texture2D(unsigned int width, unsigned int height)
 	{
-		test((*m_d3dDevice)->CreateTexture2D(&*g_desc2D, NULL, &t));
+		test(ASRenderer::CreateTexture2D(&*g_desc2D, NULL, &t));
 	}
 	ULONG Release() { return t->Release(); }
 };
 
 // Create render target views/////////////////////////////////////////////////////////////////////////
 //and Depth stencil//////////////////////////////////////////////////////////////////////////////////
-class renderTargetViews: public shaderResource
+ID3D10Device *const renderTargetViews::m_d3dDevice = ASRenderer::m_d3dDevice;
+
+class renderTargetViews
 {
+	static ID3D10Device *const m_d3dDevice;
 	vector<ID3D10RenderTargetView*> rts;
 	ID3D10DepthStencilView *m_dsv = nullptr;
-	
+
 	int Size()
 	{
 		return rts.size();
@@ -755,10 +663,10 @@ class renderTargetViews: public shaderResource
 		descDepth1D.Format = DXGI_FORMAT_D32_FLOAT;
 		descDepth1D.BindFlags = D3D10_BIND_DEPTH_STENCIL;
 
-		hr = (*m_d3dDevice)->CreateTexture1D(&descDepth1D, NULL, &pDepthStencil1D);
+		hr = m_d3dDevice->CreateTexture1D(&descDepth1D, NULL, &pDepthStencil1D);
 		test(hr);
 
-		hr = (*m_d3dDevice)->CreateDepthStencilView(pDepthStencil1D, NULL, &m_dsv);
+		hr = m_d3dDevice->CreateDepthStencilView(pDepthStencil1D, NULL, &m_dsv);
 		test(hr);
 	}
 
@@ -775,10 +683,10 @@ class renderTargetViews: public shaderResource
 
 		ID3D10Texture2D* pDepthStencil2D;
 
-		hr = (*m_d3dDevice)->CreateTexture2D(&descDepth2D, NULL, &pDepthStencil2D);
+		hr = m_d3dDevice->CreateTexture2D(&descDepth2D, NULL, &pDepthStencil2D);
 		test(hr);
 
-		hr = (*m_d3dDevice)->CreateDepthStencilView(pDepthStencil2D, NULL, &m_dsv);
+		hr = m_d3dDevice->CreateDepthStencilView(pDepthStencil2D, NULL, &m_dsv);
 		test(hr);
 	}
 
@@ -787,7 +695,7 @@ public:
 	{
 		g_rtDesc.ViewDimension = D3D10_RTV_DIMENSION_TEXTURE1D;
 		ID3D10RenderTargetView *rtv;
-		(*m_d3dDevice)->CreateRenderTargetView(tex.t, &g_rtDesc, &rtv);
+		ASRenderer::m_d3dDevice->CreateRenderTargetView(tex.t, &g_rtDesc, &rtv);
 		rts.push_back(rtv);
 		if(m_dsv == nullptr)
 			CreateDepthStencilView1D(g_desc1D.Width);
@@ -797,7 +705,7 @@ public:
 	{
 		g_rtDesc.ViewDimension = D3D10_RTV_DIMENSION_TEXTURE2D;
 		ID3D10RenderTargetView *rtv;
-		(*m_d3dDevice)->CreateRenderTargetView(tex.t, &g_rtDesc, &rtv);
+		m_d3dDevice->CreateRenderTargetView(tex.t, &g_rtDesc, &rtv);
 		rts.push_back(rtv);
 		if (m_dsv == nullptr)
 			CreateDepthStencilView2D(g_desc2D.Width, g_desc2D.Height);
@@ -805,28 +713,28 @@ public:
 
 	void SetRenderTarget(int idx)
 	{
-		(*m_d3dDevice)->OMSetRenderTargets(1, &rts[idx], m_dsv);
+		m_d3dDevice->OMSetRenderTargets(1, &rts[idx], m_dsv);
 	}
 	void SetRenderTargets()
 	{
-		(*m_d3dDevice)->OMSetRenderTargets(rts.size(), rts.data(), m_dsv);
+		m_d3dDevice->OMSetRenderTargets(rts.size(), rts.data(), m_dsv);
 	}
 	void ClearRenderTarget(int idx)
 	{
 		float color[] = { 0.0f, 0.0f, 0.0f, 0.0f };
-		(*m_d3dDevice)->ClearRenderTargetView(rts[idx], color);
+		m_d3dDevice->ClearRenderTargetView(rts[idx], color);
 	}
 	void ClearRenderTargets()
 	{
 		for (auto r : rts)
 		{
 			float color[] = { 0.0f, 0.0f, 0.0f, 0.0f };
-			(*m_d3dDevice)->ClearRenderTargetView(r, color);
+			m_d3dDevice->ClearRenderTargetView(r, color);
 		}
 	}
 	void ClearDepthStencilView()
 	{
-		(*m_d3dDevice)->ClearDepthStencilView(m_dsv, D3D10_CLEAR_DEPTH, 1.0f, 0);
+		m_d3dDevice->ClearDepthStencilView(m_dsv, D3D10_CLEAR_DEPTH, 1.0f, 0);
 	}
 	void Release()
 	{
@@ -874,7 +782,7 @@ public:
 	}
 };
 
-class effectResourceVariable: public shaderResource, public shaderEffect
+class effectResourceVariable
 {
 	//The output texture on which the rendered pass will be stored
 	ID3D10EffectShaderResourceVariable* ESRV;
@@ -885,13 +793,13 @@ public:
 	effectResourceVariable(const char *name)
 	{
 		//The connection between the two textures is made by the input texture name.
-		ESRV = (*m_d3dEffect)->GetVariableByName(name)->AsShaderResource();
+		ESRV = ASRenderer::GetVariableByName(name)->AsShaderResource();
 	}
 
 	HRESULT Set(texture2D &&tex2D)
 	{
 		g_srvDesc.ViewDimension = D3D10_SRV_DIMENSION_TEXTURE2D;
-		HRESULT hr = (*m_d3dDevice)->CreateShaderResourceView(tex2D.t, &g_srvDesc, &SRV);
+		HRESULT hr = ASRenderer::CreateShaderResourceView(tex2D.t, &g_srvDesc, &SRV);
 		test(hr);
 		return hr;
 	}
@@ -899,7 +807,7 @@ public:
 	{
 		g_srvDesc.ViewDimension = D3D10_SRV_DIMENSION_TEXTURE1D;
 
-		HRESULT hr = (*m_d3dDevice)->CreateShaderResourceView(tex1D.t, &g_srvDesc, &SRV);
+		HRESULT hr = ASRenderer::CreateShaderResourceView(tex1D.t, &g_srvDesc, &SRV);
 		test(hr);
 		return hr;
 	}

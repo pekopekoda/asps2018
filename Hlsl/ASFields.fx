@@ -72,7 +72,7 @@ VS_FIELDPARAMETERSOUTPUT VSRenderFieldsParameters(VS_FIELDPARAMETERSOUTPUT In)
 	//To do so, get the field index and reduces it into the range 0:1
 	//Store the result in position.x
 	Out.position.x = In.index * 2;
-	Out.position.x /= FIELDSTOTAL * g_width;
+	Out.position.x /= FIELDSTOTAL * g_fieldSizeUpdate;
 	Out.position.x -= 0.998455; // ?
 	Out.position.y = 1;
 	Out.position.z = 0;
@@ -148,7 +148,7 @@ VS_FIELDPARAMETERSOUTPUT GSPick(VS_FIELDPARAMETERSOUTPUT In, inout VS_FIELDPARAM
 	_goalPos = In.pos + In.goal;
 	float3 _goalPWP = GetPickWorldPos(_goalPos);
 
-	if (g_userInterface == CLICK)
+	if (g_clickEvent == 1)
 	{
 		_cursorToField = _fieldPWP - In.pos;
 		_goalPos = In.pos + In.goal;
@@ -182,33 +182,6 @@ VS_FIELDPARAMETERSOUTPUT GSPick(VS_FIELDPARAMETERSOUTPUT In, inout VS_FIELDPARAM
 	return Out;
 }
 
-int	  GSUpdateType				()			
-{
-	// Test if user request is CHANGE_TYPE. if true, function will return g_plusMinus, else 0
-	return lerp(sign(g_plusMinus), 0,		(saturate(abs(g_userInterface - CHANGE_TYPE))));
-}
-float GSUpdateSize				()			
-{
-	// Test if user request is CHANGE_SIZE. if true, function will return g_plusMinus, else 0
-	// If lower than 1, field is deactivated.
-	return lerp(g_plusMinus, 0,		(saturate(abs(g_userInterface - CHANGE_SIZE))));
-}
-float GSUpdateFieldCenterStrength	()			
-{
-	// Test if user request is CHANGE_CENTER_FORCE_TYPE. if true, function will return g_plusMinus, else 0
-	return lerp(g_plusMinus, 0,		(saturate(abs(g_userInterface - CHANGE_CENTER_FORCE)))) * 0.1;//g_plusMinus is a bit strong...
-}
-float GSUpdateFieldExtrStrength		()			
-{
-	// Test if user request is CHANGE_EXTREMITY_FORCE_TYPE. if true, function will return g_plusMinus, else 0
-	return lerp(g_plusMinus, 0,		(saturate(abs(g_userInterface - CHANGE_EXTREMITY_FORCE)))) * 0.1;//g_plusMinus is a bit strong...
-}
-float GSUpdateFieldStrengthInterpol	()			
-{
-	// Test if user request is CHANGE_INTERPOLATION. if true, function will return g_plusMinus, else 0
-	return lerp(g_plusMinus, 0,		(saturate(abs(g_userInterface - CHANGE_INTERPOLATION)))) * 0.1;//g_plusMinus is a bit strong...
-}
-
 float3 GSReinitStrength(float3 _strength, float _type, float _typeHasChanged)
 {
 	float3 _temp = lerp(float3(1,0.1,1), float3(1,5,1), saturate(_type));
@@ -224,9 +197,9 @@ VS_FIELDPARAMETERSOUTPUT GSUpdateForceType(VS_FIELDPARAMETERSOUTPUT Out, VS_FIEL
 			Out.strength = float3(1.0, 5.0, 1.0);
 		else
 		{
-			Out.strength.x = clamp(In[0].strength.x + GSUpdateFieldCenterStrength(), 0.0, 10.0);
-			Out.strength.y = clamp(In[0].strength.y + GSUpdateFieldExtrStrength(), 0.0, 10.0);
-			Out.strength.z = clamp(In[0].strength.z + GSUpdateFieldStrengthInterpol(), 0.0, 10.0);
+			Out.strength.x = clamp(In[0].strength.x + g_fieldCenterForceUpdate * 0.1, 0.0, 10.0);
+			Out.strength.y = clamp(In[0].strength.y + g_fieldExtremityForceUpdate * 0.1, 0.0, 10.0);
+			Out.strength.z = clamp(In[0].strength.z + g_fieldInterpolationForceUpdate * 0.1, 0.0, 10.0);
 		}
 	}
 	return Out;
@@ -252,10 +225,8 @@ VS_FIELDPARAMETERSOUTPUT GSUpdateBouncerType(line VS_FIELDPARAMETERSOUTPUT Out, 
 			Out.strength = float3(1.0, 1.0, 1.0);
 		else
 		{
-			Out.strength.x = clamp(In[0].strength.x + GSUpdateFieldCenterStrength(), 0.0, 10.0);
-			Out.strength.x = clamp(In[0].strength.x + GSUpdateFieldExtrStrength(), 0.0, 10.0);
-			Out.strength.y = clamp(In[0].strength.y + GSUpdateFieldCenterStrength(), 0.0, 10.0);
-			Out.strength.y = clamp(In[0].strength.y + GSUpdateFieldExtrStrength(), 0.0, 10.0);
+			Out.strength.x = clamp(In[0].strength.x + g_fieldCenterForceUpdate * 0.1, 0.0, 10.0);
+			Out.strength.y = clamp(In[0].strength.y + g_fieldExtremityForceUpdate * 0.1, 0.0, 10.0);
 		}
 	}
 	Out.goal.y = abs(Out.goal.y);
@@ -302,8 +273,8 @@ void GSUpdateFields(line VS_FIELDPARAMETERSOUTPUT In[2], inout LineStream<VS_FIE
 	_oldType = In[0].type;
 	if (Out.isSelected)
 	{
-		Out.size += GSUpdateSize();
-		Out.type = clamp(_oldType + GSUpdateType(), EMITTER_TYPE, BOUNCER_TYPE);
+		Out.size += g_fieldSizeUpdate * 0.1;
+		Out.type = clamp(Out.type+ g_fieldTypeUpdate, EMITTER_TYPE, BOUNCER_TYPE);;
 
 	}
 	Out.strength = In[0].strength;
@@ -320,8 +291,8 @@ void GSUpdateFields(line VS_FIELDPARAMETERSOUTPUT In[2], inout LineStream<VS_FIE
 		Out = GSUpdateBouncerType(Out, In, _oldType != Out.type);
 
 	UpdateFieldsWithScenario(Out);
-	Out.pos.xyz += g_translate * (Out.isSelected == FIELD_SELECTED) * 3.0;
-	Out.goal += g_translate * (Out.isSelected == GOAL_SELECTED) * 3.0;
+	Out.pos.xyz += g_fieldPositionUpdate * (Out.isSelected == FIELD_SELECTED) * 3.0;
+	Out.goal += g_fieldPositionUpdate * (Out.isSelected == GOAL_SELECTED) * 3.0;
 	PtStream.Append(Out);
 	Out.index			=		    In[1].index;
 	Out.position		=			In[1].position;

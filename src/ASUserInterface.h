@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ASDisplayDevice.h"
+#include "ASRenderer.h"
 #include <string>
 #include <tuple>
 #include <fstream>
@@ -33,8 +33,50 @@ User config file should contain the following keywords:
 #define FRICTION_FILELINE 6
 #define EMITONFIELDCENTER_FILELINE 7
 
+constexpr struct uiCommandStruct
+{
+	static const struct
+	{
+		static const uint8_t changeType = 0x54;			// type may be changed
+		static const uint8_t changeSize = 0x53;			// size may be changed
+		static const uint8_t changeCenterForce = 0x43;	// center force may be changed
+		static const uint8_t changeExtremityForce = 0x58;// extremity force may be changed
+		static const uint8_t changeInterpolation = 0x49;	// interpolation may be changed
+		static const uint8_t addFields = 107;			// Increase the current fields number
+		static const uint8_t subFields = 109;			// Decrease the current fields number
+		static const uint8_t switchVisibility = 0x48;	// visibillity on/off
+	} fields;
+	static const struct
+	{
+		static const int8_t switchGravity = 0x47; // turn gravity on/off
+		static const int8_t resetCamera = 0x60; // camera is reset to its initial position
+	} scene;
+	static const struct
+	{
+		static const int8_t emissionType = 0x45; // particles emitted at center of emitter / randomly in emitter area
+		static const uint8_t changeRate = 82; //Particle emission per second
+	} particles;
+	static const struct
+	{
+		// Used with interface input query to warn program user may change currently picked field's parameters, or about different events :
+		static const uint8_t shaderColor = 97;//1 key for color on particles
+		static const uint8_t shaderTexture = 98;//2 key for texture on particles
+		static const uint8_t shaderToon = 99;//3 key for toon on particles
+		static const uint8_t shaderDiffuse = 100;//4 key for diffuse and specular on particles
+		static const uint8_t shaderBump = 101;//5 key for bump on particles
+		static const uint8_t shaderDof = 102;//6 key for Depth on field on particles
+		static const uint8_t shaderGlow = 103;//7 key for glow on particles
+		static const uint8_t showPanel = 80; // show explanations
+	} screen;
+
+} g_uiCommands;
+
+
+
 class ASUserInterface
 {
+	ASUserInterface();
+	~ASUserInterface();
 public:
 	static vector<tuple<string, string>> GetUserFileBuffer();
 	static int currentKey;
@@ -53,14 +95,12 @@ public:
 	static bool GetInput(UINT message, WPARAM wParam, LPARAM lParam);
 	static void ProcessKeyInput(WPARAM wParam, bool mode);
 
-	effectIntVariable		m_bvIsMouseReleased;
-	effectFloatVariable		m_fvMouseWheelValue;
-	void InitInput();
-	void UpdateInput();
-	void ResetInput();
-
-	ASUserInterface();
-	~ASUserInterface();
+	static effectIntVariable		m_bvIsMouseReleased;
+	static effectIntVariable		m_bvClickEvent;
+	static effectFloatVariable		m_fvMouseWheelValue;
+	static void InitInput();
+	static void UpdateInput();
+	static void ResetInput();
 
 };
 
@@ -105,19 +145,6 @@ void ASUserInterface::MouseMoved(WPARAM wParam, LPARAM lParam)
 	cursorOffset.y = cursorPosition.y - y;
 	cursorPosition = D3DXVECTOR2(x, y);
 	mouseButton = wParam;
-
-	if (wParam == VK_RBUTTON)  //Mouse right button down
-	{
-		env->camera.Rotate(dy*0.006f, dx*0.006f);
-	}
-	else if (wParam == VK_MBUTTON)  //Mouse middle button down
-	{
-		env->camera.Move(dx*0.1f, -dy*0.1f, 0);
-	}
-	else if (env->userInput.m_bvIsMouseReleased.val)
-		return;
-	
-	env->Picking3D();
 }
 
 void ASUserInterface::LButtonDown()
@@ -125,7 +152,7 @@ void ASUserInterface::LButtonDown()
 	if (mouseReleased)
 	{
 		mouseReleased = false;
-		currentKey = CLICK;
+		m_bvClickEvent.val = 1;
 	}
 }
 
@@ -180,11 +207,10 @@ void ASUserInterface::InitInput()
 {
 	mouseReleased = true;
 	currentKey = 0;
-
-	m_fvMouseWheelValue = effectFloatVariable("g_plusMinus");
-	m_fvMouseWheelValue.Push(0.0f);
 	m_bvIsMouseReleased = effectIntVariable("g_released");
 	m_bvIsMouseReleased.Push(1);
+	m_bvClickEvent = effectIntVariable("g_clickEvent");
+	m_bvClickEvent.Push(0);
 }
 
 void ASUserInterface::UpdateInput()
@@ -194,6 +220,7 @@ void ASUserInterface::UpdateInput()
 	else
 		m_fvMouseWheelValue.Push(3);
 	m_bvIsMouseReleased.Push(float(mouseReleased));
+	m_bvClickEvent.Push();
 }
 
 void ASUserInterface::ResetInput()
@@ -201,6 +228,7 @@ void ASUserInterface::ResetInput()
 	currentKey = 0;
 	mouseWheelDelta = 0.0f;
 	m_fvMouseWheelValue.Push(0.0f);
+	m_bvClickEvent.Push(0);
 
 }
 ASUserInterface::ASUserInterface()

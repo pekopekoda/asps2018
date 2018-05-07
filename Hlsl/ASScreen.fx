@@ -43,7 +43,7 @@ float4 PSRenderScreenWithText(VS_SCREENOUTPUT In) : SV_Target
 	float2 _coords= saturate(sign(In.inTxr - _begin)) * saturate(sign(_end - In.inTxr));
 	float2 inTxr = In.inTxr;
 	float _test = _coords.x * _coords.y;
-	//Get texture areas in HUD which match with shaders user wants to be used
+	//Get the texture areas in HUD, where is displayed the name of the shader being currently rendered
 	_begin = g_colorCoords.xy;
 	_end   = g_colorCoords.zw;
 	_coords= saturate(sign(inTxr - _begin)) * saturate(sign(_end - inTxr)) * g_color;
@@ -72,13 +72,14 @@ float4 PSRenderScreenWithText(VS_SCREENOUTPUT In) : SV_Target
 	_end   = g_glowCoords.zw;
 	_coords= saturate(sign(inTxr - _begin)) * saturate(sign(_end - inTxr)) * g_glow;		
 	_test += _coords.x * _coords.y;
-	/*_begin = g_clickExpl.xy;
-	_end   = g_clickExpl.zw;
-	_coords = saturate(sign(inTxr - _begin)) * saturate(sign(_end - inTxr));// * (1 - g_released);		
-	_test += _coords.x * _coords.y;*/
 	//Compute final result
 	_test  = saturate(_test);
-	float4 colorHUD = txHUD.Sample(samLinear, In.inTxr * _test);
+	if (In.inTxr<g_displayCoords.xy || In.inTxr>g_displayCoords.zw)
+	{
+		In.inTxr.x = 0;
+		In.inTxr.y = 0;
+	}
+	float4 colorHUD = txHUD.Sample(samLinear, In.inTxr);
 	//And return
 	return colorHUD;
 }

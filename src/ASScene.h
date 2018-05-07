@@ -1,7 +1,11 @@
 #pragma once
 
 #include <string>
+#include <memory>
 #include <fstream>
+#include "ASRenderer.h""
+
+#include "ASCamera.h"
 #include "ASParticles.h"
 #include "ASFields.h"
 #include "ASScreen.h"
@@ -9,39 +13,35 @@
 constexpr char* g_gravityCfg = "Gravity";
 constexpr char* g_atmosphereCfg = "Atmosphere thickness";
 // Used with interface input query to warn program user may change currently picked field's parameters, or about different events :
-constexpr int8_t SWITCH_GRAVITY_ONOFF = 0x47; // turn gravity on/off
-constexpr int8_t GRAVITY_ON = -1;
-constexpr int8_t GRAVITY_OFF = -2;
-constexpr int8_t EMISSION_TYPE = 0x45; // particles emitted at center of emitter / randomly in emitter area
-constexpr int8_t CLEAR_CAM = 0x60; // camera is reseted to its initial position
-constexpr int8_t CLICK = 1;    //Correspond to a trigger which means "right mouse button has just been pushed".
-constexpr int8_t EXIT = 27;	//Cancel the current mode
-constexpr uint8_t g_showPanelCommand = 80; // show explanations
-#define MOVE_OBJECT					77 //Translate mode
+//constexpr int8_t g_switchGravity = 0x47; // turn gravity on/off
+//constexpr int8_t g_gravityOn = -1;
+//constexpr int8_t g_gravityOff = -2;
+//constexpr int8_t g_emissionType = 0x45; // particles emitted at center of emitter / randomly in emitter area
+//constexpr int8_t g_resetCameraCommand = 0x60; // camera is reseted to its initial position
+//constexpr int8_t g_rightClickEvent = 1;    //Correspond to a trigger which means "right mouse button has just been pushed".
+//constexpr int8_t g_exitModeCommand = 27;	//Cancel the current mode
+//constexpr uint8_t g_translateModeCommand = 77; //Translate mode
+extern uiCommandStruct g_uiCommands;
 
 using namespace std;
 
 class ASScene
 {
-	static ASScene *m_singleton;
-	ASScreen* m_screen;
-	ASFields *m_fields;
-	ASParticles* m_particles;
-
 	ASScene();
-
-public:
-	static ASScene * GetInstance();
 	~ASScene();
 
-	void Init(vector<std::string> buf);
-	void Render();
-	void Clear();
-	 
+	unique_ptr<ASScreen> m_screen;
+	unique_ptr<ASCamera> m_camera;
+
+	vector<unique_ptr<ASSceneObject>> m_objects; 
+	vector<unique_ptr<ASSceneInstance>> m_instances;
+
+
 	effectMatrixVariable	m_mvWorldViewProj;
 	effectMatrixVariable	m_mvWorld;
 	effectMatrixVariable	m_mvProj;
 	effectMatrixVariable	m_mvView;
+	effectMatrixVariable	m_mvClicCoords;
 	effectFloatVariable		m_fvTime;
 	effectFloatVariable		m_fvDeltaTime;
 	effectFloatVariable		m_fvGravity;
@@ -49,57 +49,26 @@ public:
 	float					m_gravity;
 	float					m_friction;
 	effectIntVariable		m_bvGravity;
-	effectVectorVariable	m_vvTranslate;
-
-	D3DXMATRIX		m_matProjection;
-	D3DXVECTOR2		m_mousePosition;
+	effectIntVariable		m_ivCurrentAction;
 
 	float lastTime;
 
-
-
 public:
 	float CurrentTime();
-	void InitWorld(vector<string> vsBuf);
+	void Init(vector<string> buf);
 	void Picking3D();
-	void PreFrame();
 	void Update();
+	void PostFrame();
 	void Clear();
 };
 
-void ASEnvironment::ASUserInput::Init()
-{
-	currentKey = 0;
-	m_ivCurrentAction = effectIntVariable("g_userInterface");
-	m_bvIsMouseReleased = effectIntVariable("g_released");
-	m_mvClicCoords = effectMatrixVariable("matPickInfos");
-
-	m_ivCurrentAction.Push(g_showPanelCommand);
-	m_bvIsMouseReleased.Push(1);
-	D3DXMATRIX mTemp;
-	m_mvClicCoords.Push(mTemp);
-}
-
-ASEnvironment::ASUserInput::ASUserInput() :cursorPosition(D3DXVECTOR2(0, 0)), keyReleased(true) {}
-ASEnvironment::ASUserInput::~ASUserInput() {}
-
-ASEnvironment* ASEnvironment::m_singleton = NULL;
-ASEnvironment* ASEnvironment::GetInstance()
-{
-	if (m_singleton == NULL)
-		m_singleton = new ASEnvironment();
-
-	return m_singleton;
-}
-
-float ASEnvironment::CurrentTime()
+float ASScene::CurrentTime()
 {
 	return m_fvTime.val;
 }
 
-void ASEnvironment::InitWorld(vector<string> vsBuf)
+void ASScene::Init(vector<string> vsBuf)
 {
-
 	// Obtain the variables
 	m_mvWorldViewProj = effectMatrixVariable("matWorldViewProjection");
 	m_mvWorld = effectMatrixVariable("matWorld");
@@ -109,75 +78,86 @@ void ASEnvironment::InitWorld(vector<string> vsBuf)
 	m_fvGravity = effectFloatVariable("GRAVITY");
 	m_fvFriction = effectFloatVariable("RESISTANCE");
 	m_bvGravity = effectIntVariable("g_gravity");
-	userInput.m_fvMouseWheelValue = effectFloatVariable("g_plusMinus");
-	m_vvTranslate = effectVectorVariable("g_translate");
+	ASUserInterface::m_fvMouseWheelValue = effectFloatVariable("g_plusMinus");
+	
+	m_ivCurrentAction = effectIntVariable("g_userInterface");
+	m_mvClicCoords = effectMatrixVariable("matPickInfos");
 
+	D3DXMATRIX mTemp;
+	m_mvClicCoords.Push(mTemp);
+
+	string name, value;
 	for (auto it = vsBuf.begin(); it != vsBuf.end(); it++)
 	{
-		if ((*it) != "E")
-		{
-			it += 2;
-		}
-		else
-		{
-			it++;
-			if ((*it) == g_gravityCfg)
-			{
-				it++;
-				m_fvGravity.Push(float(atof((*it).c_str())));
-			}
-			else if ((*it) == g_atmosphereCfg)
-			{
-				{
-					it++;
-					m_fvFriction.Push(float(atof((*it).c_str())));
-				}
-			}
-			else
-				it++;
-		}
+		name = std::get<0>(*it);
+		value = std::get<1>(*it);
+		if (name == g_gravityCfg)
+			m_fvGravity.Push(float(atof(value.c_str())));
+		else if (name == g_atmosphereCfg)
+			m_fvFriction.Push(float(atof(value.c_str())));
 	}
 
 	m_fvTime.Push(0.0f);
 	m_fvDeltaTime.Push(0.0f);
 	m_bvGravity.Push(1);
-	userInput.m_fvMouseWheelValue.Push(0.0f);
+	ASUserInterface::m_fvMouseWheelValue.Push(0.0f);
 
-	userInput.Init();
+	ASUserInterface::InitInput();
 	// Initialize the world matrix
 	D3DXMatrixIdentity(&m_mvWorld.m);
-	camera.Reset();
+	m_camera->Reset();
 
 	// Initialize the projection matrix
-	D3DXMatrixPerspectiveFovLH(&m_matProjection, (float)D3DX_PI * 0.5f, WIDTH / (FLOAT)HEIGHT, 0.2f, 295.0f);
+	D3DXMatrixPerspectiveFovLH(&m_mvProj.m, (float)D3DX_PI * 0.5f, WIDTH / (FLOAT)HEIGHT, 0.2f, 295.0f);
 
 	//update matrices and variables
-	//m_mvWorldViewProj.Push(m_mvWorld.m * camera.m * m_matProjection);
-	m_mvProj.Push(m_matProjection);
-	m_mvView.Push(camera.m);
-
+	m_mvProj.Push();
+	m_mvView.Push(m_camera->m);
 	m_mvWorld.Push();
 
 	Picking3D();
 
+	m_screen = make_unique<ASScreen>(make_unique<ASScreen>(this));
+	m_camera = make_unique<ASCamera>(this);
+	m_objects.push_back(make_unique<ASFields>(this));
+	m_objects.push_back(make_unique<ASParticles>(this));
+
+	m_screen->InitShaderResources(vsBuf);
+	for (auto &o : m_objects)
+		o->InitShaderResources(vsBuf);
+
+	m_screen->InitViews();
+	for (auto &o : m_objects)
+		o->InitViews();
+	for (auto &o : m_object)
+	{
+		auto p = o->GetMainRenderResource();
+		m_screen->AddEffectResourceVariable(*o.first->GetMainRenderResource());
+		if (o.second != nullptr)
+			m_screen->AddEffectResourceVariable(*o.second->GetMainRenderResource());
+	}
+
+	m_screen->InitBuffers();
+	for (auto &o : m_objects)
+		o->InitBuffers();
 }
 
 //--------------------------------------------------------------------------------------
 // Picking
 //--------------------------------------------------------------------------------------
-void ASEnvironment::Picking3D()
+void ASScene::Picking3D()
 {
 	D3DXVECTOR3 vPickRayDir;
 	D3DXVECTOR3 vPickRayOrig;
 
 	// Compute the vector of the pick ray in screen space
 	D3DXVECTOR3 v;
-	v.x = (((2.0f *  userInput.cursorPosition.x) / WIDTH) - 1) / m_matProjection._11;
-	v.y = -(((2.0f * userInput.cursorPosition.y) / HEIGHT) - 1) / m_matProjection._22;
+	v.x = (((2.0f *  ASUserInterface::cursorPosition.x) / WIDTH) - 1) / m_mvProj.m._11;
+	v.y = -(((2.0f * ASUserInterface::cursorPosition.y) / HEIGHT) - 1) / m_mvProj.m._22;
 	v.z = 1.0f;
 
 	// Get the inverse view matrix
-	D3DXMATRIX mWorldView = m_mvWorld.m * camera.m;
+	D3DXMATRIX mWorldView = m_mvWorld.m * m_camera->m;
 	D3DXMATRIX m;
 	D3DXMatrixInverse(&m, NULL, &mWorldView);
 
@@ -190,9 +170,6 @@ void ASEnvironment::Picking3D()
 	vPickRayOrig.z = m._43;
 
 	D3DXVECTOR3 _lookAt = D3DXVECTOR3(m._31, m._32, m._33);
-	/*D3D10_VIEWPORT _vp[1];
-	UINT _nbr[1] = {1};
-	m_device->m_d3dDevice->RSGetViewports( _nbr, _vp );*/
 
 	D3DXMATRIX _mTemp;
 	_mTemp._11 = vPickRayOrig.x;		_mTemp._12 = vPickRayDir.x;		_mTemp._13 = _lookAt.x;
@@ -200,60 +177,29 @@ void ASEnvironment::Picking3D()
 	_mTemp._31 = vPickRayOrig.z;		_mTemp._32 = vPickRayDir.z;		_mTemp._33 = _lookAt.z;
 
 	// Sends pick result to GPU
-	userInput.m_mvClicCoords.Push(_mTemp);
-}
-void ASEnvironment::PreFrame()
-{
-	switch (userInput.currentKey)
-	{
-	case SWITCH_GRAVITY_ONOFF:
-		if (userInput.keyReleased)
-		{
-			m_bvGravity.Push(!m_bvGravity.val);
-			userInput.m_ivCurrentAction.val = (m_bvGravity.val) ? GRAVITY_ON : GRAVITY_OFF;
-		}
-
-	case EMISSION_TYPE: userInput.m_ivCurrentAction.val = EMISSION_TYPE;			break;
-	case CLEAR_CAM:
-		camera.Reset();
-		Picking3D();
-		break;
-	case EXIT: userInput.m_ivCurrentAction.val = 0;						break;
-	case MOVE_OBJECT: userInput.m_ivCurrentAction.val = MOVE_OBJECT;			break;
-	case CLICK:
-	{
-		int oldValue = userInput.m_ivCurrentAction.val;
-		userInput.m_ivCurrentAction.Push(CLICK);
-		userInput.m_ivCurrentAction.val = oldValue;
-		break;
-	}
-	}
-	switch (userInput.m_ivCurrentAction.val)
-	{
-	case MOVE_OBJECT:
-	{
-		if (!userInput.keyReleased || userInput.m_fvMouseWheelValue.val)
-		{
-			switch (userInput.currentKey)
-			{
-			case VK_UP: m_vvTranslate.Push(0.0f, 1.0f, 0.0f); break;
-			case VK_DOWN: m_vvTranslate.Push(0.0f, -1.0f, 0.0f); break;
-			case VK_LEFT: m_vvTranslate.Push(-1.0f, 0.0f, 0.0f); break;
-			case VK_RIGHT: m_vvTranslate.Push(1.0f, 0.0f, 0.0f); break;
-			}
-			if (userInput.m_fvMouseWheelValue.val > 0.0f)
-				m_vvTranslate.Push(0.0f, 0.0f, 1.0f);
-			else if (userInput.m_fvMouseWheelValue.val < 0.0f)
-				m_vvTranslate.Push(0.0f, 0.0f, -1.0f);
-		}
-		else
-			m_vvTranslate.Push(0.0f, 0.0f, 0.0f);
-
-	} break;
-	}
+	m_mvClicCoords.Push(_mTemp);
 }
 
 void ASScene::Update()
+{
+	ASUserInterface::UpdateInput();
+	if (ASUserInterface::keyReleased)
+	{
+		switch (ASUserInterface::currentKey)
+		{
+		case g_uiCommands.scene.switchGravity:
+			m_bvGravity.Push(!m_bvGravity.val);
+			break;
+
+		case g_uiCommands.scene.resetCamera:
+			m_camera->Reset();
+			Picking3D();
+			break;
+		}
+	}
+}
+
+void ASScene::PostFrame()
 {
 	static DWORD dwTimeStart = 0;
 	DWORD dwTimeCur = GetTickCount();
@@ -264,34 +210,34 @@ void ASScene::Update()
 	m_fvDeltaTime.Push(time - m_fvTime.val);
 	m_fvTime.Push(time);
 
-	//update matrices and variables
-	//m_mvWorldViewProj.Push(m_mvWorld.m * camera.m * m_matProjection);
+	if(!ASUserInterface::mouseReleased)
+		Picking3D();
 
-	camera.Update();
-	m_mvProj.Push(m_matProjection);
+	float mwd = m_ivCurrentAction.val ? 0.0 : ASUserInterface::mouseWheelDelta;
+	if(!ASUserInterface::mouseReleased || mwd != 0.0)
+		m_camera->Update(ASUserInterface::cursorOffset, ASUserInterface::mouseButton, mwd);
+	m_mvProj.Push();
+	m_ivCurrentAction.Push();
+	ASUserInterface::ResetInput();
+}
 
-	userInput.m_fvMouseWheelValue.Push(0.0f);
-	userInput.m_ivCurrentAction.Push();
+void ASScene::Render()
+{
+	m_fields->Render();
+	m_particles->Render();
+	m_screen->Render();
+}
 
-	if (wParam == VK_RBUTTON)  //Mouse right button down
-	{
-		env->camera.Rotate(dy*0.006f, dx*0.006f);
-	}
-	else if (wParam == 16)  //Mouse middle button down
-	{
-		env->camera.Move(dx*0.1f, -dy*0.1f, 0);
-	}
-	else if (env->userInput.m_bvIsMouseReleased.val)
-		return;
-
-	env->Picking3D();
+void ASScene::Clear()
+{
+	m_screen->Clear();
+	m_fields->Clear();
+	m_particles->Clear();
 }
 
 
-ASEnvironment::ASEnvironment()
+
+ASScene::ASScene()
 {
-	m_device = ASDisplayDevice::GetInstance();
 	m_fvTime.val = 0.0f;
 }
-
-ASScene* ASScene::m_singleton = NULL;

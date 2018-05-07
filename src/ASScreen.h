@@ -1,18 +1,40 @@
 #pragma once
 
+#include <map>
 #include "ASSceneObject.h"
 
-// Used with interface input query to warn program user may change currently picked field's parameters, or about different events :
-constexpr uint8_t g_shaderColor	    = 97 ;//1 key for color on particles
-constexpr uint8_t g_shaderTexture	= 98 ;//2 key for texture on particles
-constexpr uint8_t g_shaderToon		= 99 ;//3 key for toon on particles
-constexpr uint8_t g_shaderDiffuse	= 100;//4 key for diffuse and specular on particles
-constexpr uint8_t g_shaderBump		= 101;//5 key for bump on particles
-constexpr uint8_t g_shaderDof		= 102;//6 key for Depth on field on particles
-constexpr uint8_t g_shaderGlow		= 103;//7 key for glow on particles
+extern uiCommandStruct g_uiCommands;
+//// Used with interface input query to warn program user may change currently picked field's parameters, or about different events :
+//constexpr uint8_t g_shaderColor	    = 97 ;//1 key for color on particles
+//constexpr uint8_t g_shaderTexture	= 98 ;//2 key for texture on particles
+//constexpr uint8_t g_shaderToon		= 99 ;//3 key for toon on particles
+//constexpr uint8_t g_shaderDiffuse	= 100;//4 key for diffuse and specular on particles
+//constexpr uint8_t g_shaderBump		= 101;//5 key for bump on particles
+//constexpr uint8_t g_shaderDof		= 102;//6 key for Depth on field on particles
+//constexpr uint8_t g_shaderGlow		= 103;//7 key for glow on particles
 constexpr char*	  g_senvMapCfg		= "Environment map";
 
-extern constexpr uint8_t g_showPanelCommand = 80;
+//constexpr uint8_t g_showPanelCommand = 80; // show explanations
+constexpr initializer_list<float> g_displayCoords(int value)
+{
+	const std::pair<int, initializer_list<float> > coords[] =
+	{
+		{ 0,{ 0.0, 0.0, 0.0, 0.0 } }, //default value
+		{ g_uiCommands.fields.changeType,{ 0.0f, 0.1f, 0.3f, 0.15f } }, // change_type		
+		{ g_uiCommands.fields.changeSize,{ 0.0, 0.15, 0.2, 0.2 } }, // change_size
+		{ g_uiCommands.fields.changeCenterForce,{ 0.0, 0.2, 0.42, 0.25 } }, // change_center_force	
+		{ g_uiCommands.fields.changeExtremityForce,{ 0.55, 0.0, 1.0, 0.04 } }, // change_extremity_force
+		{ g_uiCommands.fields.changeInterpolation,{ 0.55, 0.04, 1.0, 0.1 } }, // change_interpolation
+		{ g_uiCommands.scene.switchGravity,{ 0.0, 0.0, 0.1, 0.03 } }, // switch_gravity_on
+		{ g_uiCommands.scene.resetCamera,{ 0.0, 0.0, 0.0, 0.0 } }, // clear_cam
+		{ g_uiCommands.particles.emissionType,{ 0.55, 0.14, 1.0, 0.18 } }, // emission_type	
+		{ g_uiCommands.screen.showPanel,{ 0.0, 0.28, 1.0, 1.0 } },  // show_panel
+	};
+
+	for (auto p : coords)
+		if (p.first == value)
+			return p.second;
+}
 
 /*The screen is a square rendered in front of the camera. It is rendered through two passes.
 The first pass displays the other objects rendered in the scene as a texture and drops the render into a render texture.
@@ -43,7 +65,8 @@ public:
 
 	effectIntVariable m_bvDOF;
 	effectIntVariable m_bvGlow;
-	effectIntVariable m_bvHUD;
+	effectVectorVariable m_vvdisplayCoords;
+	effectIntVariable m_ivShowPanel;
 
 	effectResourceVariable m_rrHUD;
 	effectResourceVariable m_rrEnvMap;
@@ -58,21 +81,23 @@ public:
 	~ASScreen();
 	void InitViews();
 	void InitShaderResources(vector<tuple<string, string>> vsBuf);
+	//Add extra resource to render from other objects
+	void AddEffectResourceVariable(effectResourceVariable* rr);
 	void InitBuffers();
 	void Render();
 };
 
 void ASScreen::PrePass()
 {
-	m_renderer->SetInputLayout(m_layout);
+	ASRenderer::SetInputLayout(m_layout);
 
 	ID3D10Buffer* pBuffers[1];
 	pBuffers[0] = m_firstBuffer;
 	// Set IA parameters
 	UINT stride[1] = { sizeof(VERTEX_PROTOTYPE) };
 	UINT offset[1] = { 0 };
-	m_renderer->SetVertexBuffers(0, 1, pBuffers, stride, offset);
-	m_renderer->SetPrimitiveTopology();
+	ASRenderer::SetVertexBuffers(0, 1, pBuffers, stride, offset);
+	ASRenderer::SetPrimitiveTopology();
 }
 
 void ASScreen::FirstPass()
@@ -80,7 +105,7 @@ void ASScreen::FirstPass()
 	D3D10_TECHNIQUE_DESC techDesc;
 	m_technique->GetDesc(&techDesc);
 	m_technique->GetPassByIndex(0)->Apply(0);
-	m_renderer->Draw(6);
+	ASRenderer::Draw(6);
 }
 
 
@@ -90,7 +115,7 @@ void ASScreen::SecondPass()
 	m_technique->GetDesc(&techDesc);
 	// Draw
 	m_technique->GetPassByIndex(1)->Apply(0);
-	m_renderer->Draw(6);
+	ASRenderer::Draw(6);
 }
 
 void ASScreen::ThirdPass()
@@ -99,18 +124,23 @@ void ASScreen::ThirdPass()
 	m_technique->GetDesc(&techDesc);
 	// Draw
 	m_technique->GetPassByIndex(2)->Apply(0);
-	m_renderer->Draw(6);
+	ASRenderer::Draw(6);
 }
 
+
+void ASScreen::AddEffectResourceVariable(effectResourceVariable * rr)
+{
+	m_vEffectResourceVariable2D.Add(rr);
+}
 
 void ASScreen::InitBuffers()
 {
 	const char *techniqueName = "RenderScreen";
-	m_technique = m_renderer->GetTechniqueByName(techniqueName);
+	m_technique = ASRenderer::GetTechniqueByName(techniqueName);
 	D3D10_PASS_DESC passDesc;
 	m_technique->GetPassByIndex(0)->GetDesc(&passDesc);
 	const vector<D3D10_INPUT_ELEMENT_DESC> proto = GetLayoutPrototype();
-	m_renderer->CreateInputLayout(GetLayoutPrototype(), passDesc, &m_layout);
+	ASRenderer::CreateInputLayout(GetLayoutPrototype(), passDesc, &m_layout);
 
 	VERTEX_PROTOTYPE vp1;
 	vector<VERTEX_PROTOTYPE> vps;
@@ -141,7 +171,7 @@ void ASScreen::InitBuffers()
 	vbInitData.SysMemPitch = _size;
 	vbInitData.SysMemSlicePitch = _size;
 	//Buffer creation
-	m_renderer->CreateBuffer(vbdesc, vbInitData, &m_firstBuffer);
+	ASRenderer::CreateBuffer(vbdesc, vbInitData, &m_firstBuffer);
 	m_vBuffers = { m_firstBuffer };
 }
 
@@ -152,7 +182,7 @@ void ASScreen::InitViews()
 	textures2D renderForSpecialEffects{ texture2D() };
 
 	//renderForSpecialEffects will be used by the swap chain to display the final result of the screen
-	m_renderer->SetSwapChain(&renderForSpecialEffects);
+	ASRenderer::SetSwapChain(&renderForSpecialEffects);
 
 	ASSceneObject::InitViews(renderForOtherObjects);
 	ASSceneObject::InitViews(renderForSpecialEffects);
@@ -172,8 +202,10 @@ void ASScreen::InitShaderResources(vector<tuple<string, string>> vsBuf)
 	m_bvDOF.val = 0;
 	m_bvGlow = effectIntVariable("g_glow");
 	m_bvGlow.val = 0;
-	m_bvHUD = effectIntVariable("g_display");
-	m_bvHUD.val = 1;
+	m_vvdisplayCoords = effectVectorVariable("g_displayCoords");
+	m_vvdisplayCoords.Push(g_displayCoords(0));
+	m_ivShowPanel = effectIntVariable("g_showPanel");
+	m_ivShowPanel.Push(0);
 
 	m_rrHUD.SetFromFile(HUDTexturePath);
 	m_rrHUD.Push();
@@ -186,7 +218,7 @@ void ASScreen::InitShaderResources(vector<tuple<string, string>> vsBuf)
 		if (name == g_senvMapCfg)
 		{
 			it++;
-			string txtPath = TEXTURE_PATH + value;
+			string txtPath = g_texturePath + value;
 			m_rrEnvMap.SetFromFile(txtPath.c_str());
 			m_rrEnvMap.Push();
 			m_vConstResourceVariable.Add(&m_rrEnvMap);
@@ -195,7 +227,6 @@ void ASScreen::InitShaderResources(vector<tuple<string, string>> vsBuf)
 
 	m_bvDOF .Push();
 	m_bvGlow.Push();
-	m_bvHUD .Push();
 
 	m_vEffectResourceVariable2D.Add(&m_rrMainRenderResource);
 }
@@ -205,23 +236,20 @@ void ASScreen::InitShaderResources(vector<tuple<string, string>> vsBuf)
 //--------------------------------------------------------------------------------------
 void ASScreen::Render()
 {
-	if (m_env->userInput.keyReleased)
+	if (ASUserInterface::keyReleased)
 	{
-		int cua = m_env->userInput.currentKey;
-		switch (cua)
+		switch (ASUserInterface::currentKey)
 		{
-		case g_showPanelCommand:
-			if (m_env->userInput.m_ivCurrentAction.val == g_showPanelCommand)
-				m_env->userInput.m_ivCurrentAction.val = 0;
-			else m_env->userInput.m_ivCurrentAction.val = g_showPanelCommand;
+		case g_uiCommands.screen.showPanel:
+			if (m_ivShowPanel.val == 1)
+				m_ivShowPanel.Push(0);
+			else m_ivShowPanel.Push(1);
 			break;
-		case g_shaderDof:
+		case g_uiCommands.screen.shaderDof:
 			m_bvDOF.Push(int(!m_bvDOF.val));
-			m_env->userInput.m_ivCurrentAction.val = 0;
 			break;
-		case g_shaderGlow:
+		case g_uiCommands.screen.shaderGlow:
 			m_bvGlow.Push(int(!m_bvGlow.val));
-			m_env->userInput.m_ivCurrentAction.val = 0;
 			break;
 		}
 	}
@@ -231,18 +259,18 @@ void ASScreen::Render()
 	int rollback = m_extra2DResourcesNbr + 1;
 	m_vEffectResourceVariable2D.Push(rollback);
 
-	m_renderTechnique.PrePass();
+	PrePass();
 	//If user wants a blur pass
 	if (m_bvDOF.val || m_bvGlow.val)
 	{
-		m_renderTechnique.FirstPass();
-		m_renderer->SetRenderTarget(m_pRenderTargetViews2D[1], m_pDepthStencilView2D);
+		FirstPass();
+		m_pRenderTargetViews2D.SetRenderTarget(1);
 		m_rrMainRenderResource.Push();
-		m_renderTechnique.SecondPass();
+		SecondPass();
 	}
 	else
 	{
-		m_renderer->SetRenderTarget(m_pRenderTargetViews2D[1], m_pDepthStencilView2D);
-		m_renderTechnique.ThirdPass();
+		m_pRenderTargetViews2D.SetRenderTarget(1);
+		ThirdPass();
 	}
 }

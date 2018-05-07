@@ -6,8 +6,9 @@ constexpr char* g_pmeshCfg = "Particle mesh";
 constexpr char* g_ptexCfg = "Particle texture";
 constexpr char* g_prampCfg = "Particle ramp color";
 constexpr char* g_pnbrCfg = "Particle number";
-constexpr uint8_t g_changeRate = 82; //Particle emission per second
+//constexpr uint8_t g_changeRate = 82; //Particle emission per second
 
+extern const char* g_meshPath;
 
 class ASParticles : public ASSceneObject
 {
@@ -39,23 +40,24 @@ class ASParticles : public ASSceneObject
 	effectResourceVariable m_rrDiffuse;
 	effectResourceVariable m_rrRampColor;
 
+
 	bool m_isFirstFrame;
 	float m_fLastEmittedTime;
 	UINT m_maxParticles = 2000;
 	float m_rateVariation = 0.1f * float(m_maxParticles);
-
-	string m_meshPath;
 	string m_texturePath;
 	string m_normalMapPath;
 	string m_rampTexturePath;
 
 
+	effectIntVariable m_rrMaxParticles;
 	//What shader is used			
 	effectIntVariable m_bvColor;
 	effectIntVariable m_bvTexture;
 	effectIntVariable m_bvToon;
 	effectIntVariable m_bvDiffuseAndSpec;
 	effectIntVariable m_bvBump;
+	effectIntVariable m_ivCurrentAction;
 	effectFloatVariable m_fvRandX;
 	effectFloatVariable m_fvRandY;
 	effectFloatVariable m_fvRandZ;
@@ -119,11 +121,11 @@ void ASParticles::Init(const char *techniqueName, UINT nbr)
 	m_firstBuffer = NULL;
 	m_secondBuffer = NULL;
 	
-	m_technique = m_renderer->GetTechniqueByName(techniqueName);
+	m_technique = ASRenderer::GetTechniqueByName(techniqueName);
 	D3D10_PASS_DESC passDesc;
 	m_technique->GetPassByIndex(0)->GetDesc(&passDesc);
 	const vector<D3D10_INPUT_ELEMENT_DESC> proto = GetLayoutPrototype();
-	m_renderer->CreateInputLayout(GetLayoutPrototype(), passDesc, &m_layout);
+	ASRenderer::CreateInputLayout(GetLayoutPrototype(), passDesc, &m_layout);
 
 	VERTEX_PROTOTYPE vp1;
 	vector<VERTEX_PROTOTYPE> vps;
@@ -154,18 +156,18 @@ void ASParticles::Init(const char *techniqueName, UINT nbr)
 	vbInitData.SysMemPitch = _size;
 	vbInitData.SysMemSlicePitch = _size;
 	//Buffer creation
-	m_renderer->CreateBuffer(vbdesc, vbInitData, &m_bufferStart);
+	ASRenderer::CreateBuffer(vbdesc, vbInitData, &m_bufferStart);
 
 	vbdesc.ByteWidth = nbr * vertSize;
 	vbdesc.BindFlags |= D3D10_BIND_STREAM_OUTPUT;
-	m_renderer->CreateBuffer(vbdesc, &m_firstBuffer);
-	m_renderer->CreateBuffer(vbdesc, &m_secondBuffer);
+	ASRenderer::CreateBuffer(vbdesc, &m_firstBuffer);
+	ASRenderer::CreateBuffer(vbdesc, &m_secondBuffer);
 	m_vBuffers = { m_bufferStart, m_firstBuffer , m_secondBuffer };
 }
 
 void ASParticles::FirstPass(bool isFirstFrame)
 {
-	m_renderer->SetInputLayout(m_layout);
+	ASRenderer::SetInputLayout(m_layout);
 	ID3D10Buffer* pBuffers[1];
 	if (isFirstFrame)
 		pBuffers[0] = m_bufferStart;
@@ -173,32 +175,33 @@ void ASParticles::FirstPass(bool isFirstFrame)
 		pBuffers[0] = m_firstBuffer;
 	UINT stride[1] = { sizeof(VERTEX_PROTOTYPE) };
 	UINT offset[1] = { 0 };
-	m_renderer->SetVertexBuffers(0, 1, pBuffers, stride, offset);
-	m_renderer->SetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY_POINTLIST);
+	ASRenderer::SetVertexBuffers(0, 1, pBuffers, stride, offset);
+	ASRenderer::SetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY_POINTLIST);
 
 	// Point to the correct output buffer
 	pBuffers[0] = m_secondBuffer;
-	m_renderer->StreamOutputSetTargets(1, pBuffers, offset);
+	ASRenderer::StreamOutputSetTargets(1, pBuffers, offset);
 	// Draw
 	D3D10_TECHNIQUE_DESC techDesc;
 	m_technique->GetDesc(&techDesc);
 	m_technique->GetPassByIndex(0)->Apply(0);
 	if (isFirstFrame)
-		m_renderer->Draw(1);
+		ASRenderer::Draw(1);
 	else
-		m_renderer->Draw();
+		ASRenderer::Draw();
 
 	// Get back to normal
 	pBuffers[0] = NULL;
-	m_renderer->StreamOutputSetTargets(1, pBuffers, offset);
+	ASRenderer::StreamOutputSetTargets(1, pBuffers, offset);
 }
 
 
 void ASParticles::InitShaderResources(vector<tuple<string, string>> vsBuf)
 {
-	//m_pUpdateRenderTechnique= m_renderer->GetTechniqueByName("UpdateParticles");
-	//m_pRenderTechnique		= m_renderer->GetTechniqueByName("RenderParticles");
-	effectIntVariable m_rrMaxParticles = effectIntVariable("g_maxParticles");
+	//m_pUpdateRenderTechnique= ASRenderer::GetTechniqueByName("UpdateParticles");
+	//m_pRenderTechnique		= ASRenderer::GetTechniqueByName("RenderParticles");
+	m_rrMaxParticles = effectIntVariable("g_maxParticles");
+	m_ivCurrentAction = effectIntVariable("g_particlesInterface");
 	m_rrMainRenderResource = effectResourceVariable("txParticles");
 	m_rrParticlesVelocity = effectResourceVariable("txParticlesParam");
 	m_rrBump = effectResourceVariable("txBump");
@@ -224,12 +227,12 @@ void ASParticles::InitShaderResources(vector<tuple<string, string>> vsBuf)
 
 		if(name == g_pmeshCfg)
 		{
-			m_meshPath = MESH_PATH + value;
+			m_instance = make_unique<ASSceneInstance>(this, g_meshPath + value);
 		}
 		else if (name == g_ptexCfg)
 		{
-			string txtPath = TEXTURE_PATH + value;
-			string bumpPath = TEXTURE_PATH + string("NM_") + value;
+			string txtPath = g_texturePath + value;
+			string bumpPath = g_texturePath + string("NM_") + value;
 			m_rrBump.SetFromFile(txtPath.c_str());
 			m_rrBump.Push();
 			m_rrDiffuse.SetFromFile(txtPath.c_str());
@@ -240,7 +243,7 @@ void ASParticles::InitShaderResources(vector<tuple<string, string>> vsBuf)
 		}
 		else if(name == g_prampCfg)
 		{
-			string rampPath = TEXTURE_PATH + value;
+			string rampPath = g_texturePath + value;
 			m_rrRampColor.SetFromFile(rampPath.c_str());
 			m_rrRampColor.Push();
 
@@ -264,6 +267,7 @@ void ASParticles::InitShaderResources(vector<tuple<string, string>> vsBuf)
 	m_bvToon			.Push(0);
 	m_bvDiffuseAndSpec	.Push(0);
 	m_bvBump			.Push(0);
+
 }
 
 void ASParticles::InitViews()
@@ -287,32 +291,35 @@ void ASParticles::InitBuffers()
 }   
 
 //--------------------------------------------------------------------------------------
-// Render fields on screen
+// Render particles
 //--------------------------------------------------------------------------------------
 void ASParticles::Render()
 {
 	m_pRenderTargetViews2D.ClearRenderTargets();
-	switch (m_env->userInput.currentKey)
+	switch (ASUserInterface::currentKey)
 	{
-		case g_changeRate: m_env->userInput.m_ivCurrentAction.val = g_changeRate;	break;
+		case g_changeRate: m_ivCurrentAction.val = g_changeRate;	break;
+		case g_emissionType:
+			m_ivCurrentAction.val = g_emissionType;
+			break;
 	}
 
-	if (m_env->userInput.keyReleased)
+	if (ASUserInterface::keyReleased)
 	{
-		switch (m_env->userInput.currentKey)
+		switch (ASUserInterface::currentKey)
 		{
-		case 97: m_bvColor.Push(!m_bvColor.val); m_env->userInput.currentKey = 0;	break;
-		case 98: m_bvTexture.Push(!m_bvTexture.val); m_env->userInput.currentKey = 0;	break;
-		case 99: m_bvToon.Push(!m_bvToon.val); m_env->userInput.currentKey = 0;	break;
-		case 100: m_bvDiffuseAndSpec.Push(!m_bvDiffuseAndSpec.val); m_env->userInput.currentKey = 0;	break;
-		case 101: m_bvBump.Push(!m_bvBump.val); m_env->userInput.currentKey = 0;	break;
+		case 97: m_bvColor.Push(!m_bvColor.val); ASUserInterface::currentKey = 0;	break;
+		case 98: m_bvTexture.Push(!m_bvTexture.val); ASUserInterface::currentKey = 0;	break;
+		case 99: m_bvToon.Push(!m_bvToon.val); ASUserInterface::currentKey = 0;	break;
+		case 100: m_bvDiffuseAndSpec.Push(!m_bvDiffuseAndSpec.val); ASUserInterface::currentKey = 0;	break;
+		case 101: m_bvBump.Push(!m_bvBump.val); ASUserInterface::currentKey = 0;	break;
 		}
 	}
 
-	if (m_env->userInput.m_ivCurrentAction.val == g_changeRate && m_env->userInput.m_fvMouseWheelValue.val)
+	if (m_ivCurrentAction.val == g_changeRate && ASUserInterface::mouseWheelDelta != 0.0)
 	{
 		float rate = m_fvRate.val;
-		rate += (m_env->userInput.m_fvMouseWheelValue.val < 0.0) ? -m_rateVariation : m_rateVariation;
+		rate += (ASUserInterface::mouseWheelDelta < 0.0) ? -m_rateVariation : m_rateVariation;
 		rate = (rate >= m_rateVariation)  ? rate : m_rateVariation;
 		rate = (rate <= m_maxParticles) ? rate : m_maxParticles;
 		m_fvRate.Push(rate);
@@ -331,7 +338,8 @@ void ASParticles::Render()
 
 	m_isFirstFrame = false;
 
-	//TODO call instances first pass
+	if(m_instance != nullptr)
+		m_instance->FirstPass();
 }
 
 void ASParticles::Clear(){}
