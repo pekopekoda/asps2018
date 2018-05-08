@@ -5,7 +5,6 @@
 #include "ASRenderer.h"
 #include "ASUserInterface.h"
 #include "ASMesh.h"
-#include "ASSceneInstance.h"
 
 const char* g_meshPath = "../Medias/Meshes/";
 const char* g_texturePath = "../Medias/Textures/";
@@ -16,10 +15,10 @@ class ASScene;
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 class ASSceneObject
 {
-	friend class ASSceneInstance;
 protected:
 	struct VERTEX_PROTOTYPE {};
 	ASScene *m_scene;
+	const UINT m_maxCount = 0;
 	///////////////////////////////////////////////////////////////////////////////////////////////
 	//This abstract class is an interface between the vertex buffers and related and the objects
 	//to be rendered in the scene. Its job is to create a vertex buffer, make the connection between 
@@ -29,12 +28,12 @@ protected:
 	//Vertex buffer to stream to
 	ID3D10Buffer *m_secondBuffer;
 
-	unique_ptr<ASSceneInstance> m_instance = nullptr;
 	//Get a handle on all the vertex buffers for abstract actions
 	vector<ID3D10Buffer*>    m_vBuffers;
 	//Handle on the layout for the vertex buffers
 	ID3D10InputLayout		*m_layout;
 	//HLSL Render technique
+	const char *m_techniqueName;
 	ID3D10EffectTechnique	*m_technique;
 	effectResourceVariable m_rrMainRenderResource;
 	//Handle to all the effect resource variables needed to render the object
@@ -50,11 +49,12 @@ protected:
 		return{};
 	}
 
-	virtual UINT GetSizeOfVertexPrototype();
 	ASSceneObject();
-	ASSceneObject(ASScene* parent);
+	ASSceneObject(ASScene* scene);
 
 public:
+	virtual UINT GetSizeOfVertexPrototype();
+	virtual UINT GetMaxCount();
 	void InitShaderResources(vector<tuple<string,string>> vsBuf);
 	//Returns draw from buffer
 	ID3D10Buffer *GetFirstBuffer();
@@ -68,7 +68,7 @@ public:
 
 	virtual void FirstPass();	
 	//Get the render resource used for main render pass for this object
-	std::pair<effectResourceVariable*, effectResourceVariable*> ASSceneObject::GetMainRenderResource();
+	effectResourceVariable* ASSceneObject::GetMainRenderResource();
 
 	virtual void InitViews();
 	virtual void InitViews(textures1D & pRenderTargets);
@@ -83,16 +83,21 @@ public:
 };
 
 
-
-
-
 UINT ASSceneObject::GetSizeOfVertexPrototype()
 {
 	return sizeof(VERTEX_PROTOTYPE);
 }
 
-ASSceneObject::ASSceneObject()
+UINT ASSceneObject::GetMaxCount()
 {
+	return m_maxCount;
+}
+
+ASSceneObject::ASSceneObject(){}
+
+ASSceneObject::ASSceneObject(ASScene * scene)
+{
+	m_scene = scene;
 }
 
 
@@ -137,12 +142,9 @@ void ASSceneObject::FirstPass()
 //
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-std::pair<effectResourceVariable*, effectResourceVariable*> ASSceneObject::GetMainRenderResource()
+effectResourceVariable* ASSceneObject::GetMainRenderResource()
 {
-	std::pair<effectResourceVariable*, effectResourceVariable*> p = { &m_rrMainRenderResource ,nullptr };
-	if (m_instance != nullptr)
-		p.second = m_instance->GetMainRenderResource();
-	return p;
+	return &m_rrMainRenderResource;
 }
 
 void ASSceneObject::InitViews()
@@ -194,8 +196,6 @@ HRESULT ASSceneObject::InitBuffers(vector<ID3D10Buffer*> vBuffers, vector<D3D10_
 
 void ASSceneObject::Clear()
 {
-	if (m_instance != nullptr)
-		m_instance->Clear();
 	m_pRenderTargetViews1D.Release();
 	m_pRenderTargetViews2D.Release();
 	m_rrMainRenderResource.Release();
@@ -212,10 +212,6 @@ void ASSceneObject::ClearRenderTargetViews()
 	m_pRenderTargetViews2D.ClearRenderTargets();
 }
 
-ASSceneObject::ASSceneObject(ASScene* parent)
-{
-	m_scene = parent;
-}
 void ASSceneObject::InitBuffers()
 {
 }

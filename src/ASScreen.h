@@ -11,7 +11,8 @@
 //constexpr uint8_t g_shaderBump		= 101;//5 key for bump on particles
 //constexpr uint8_t g_shaderDof		= 102;//6 key for Depth on field on particles
 //constexpr uint8_t g_shaderGlow		= 103;//7 key for glow on particles
-constexpr char*	  g_senvMapCfg		= "Environment map";
+constexpr char*	g_senvMapCfg		= "Environment map";
+constexpr char* HUDTexturePath = "../../Medias/Textures/Display.tif";
 
 class ASScene;
 
@@ -38,6 +39,7 @@ The first pass displays the other objects rendered in the scene as a texture and
 The second pass gets the previous render texture and render the scene one more time, allowing to perform special effect as depth of field or glow.*/
 class ASScreen : public ASSceneObject
 {
+	const char *m_techniqueName = "RenderScreen";
 	struct VERTEX_PROTOTYPE
 	{
 		D3DXVECTOR3 pos;
@@ -67,14 +69,14 @@ public:
 	effectResourceVariable m_rrHUD;
 	effectResourceVariable m_rrEnvMap;
 
-	const char* HUDTexturePath = "../Medias/Textures/Display.tif";
 	int m_extra2DResourcesNbr = 0;
 	//HUD																	
 	bool m_textDisplayed;						
 					
 public:
 	ASScreen();
-	ASScreen(ASScene* const parent);
+	ASScreen(ASScene *scene);
+	//ASScreen(ASScene* const parent);
 	void InitViews();
 	void InitShaderResources(vector<tuple<string, string>> vsBuf);
 	//Add extra resource to render from other objects
@@ -130,8 +132,7 @@ void ASScreen::AddEffectResourceVariable(effectResourceVariable * rr)
 
 void ASScreen::InitBuffers()
 {
-	const char *techniqueName = "RenderScreen";
-	m_technique = ASRenderer::GetTechniqueByName(techniqueName);
+	m_technique = ASRenderer::GetTechniqueByName(m_techniqueName);
 	D3D10_PASS_DESC passDesc;
 	m_technique->GetPassByIndex(0)->GetDesc(&passDesc);
 	const vector<D3D10_INPUT_ELEMENT_DESC> proto = GetLayoutPrototype();
@@ -171,6 +172,11 @@ void ASScreen::InitBuffers()
 }
 
 ASScreen::ASScreen(){}
+
+ASScreen::ASScreen(ASScene * scene)
+{
+	m_scene = scene;
+}
 
 void ASScreen::InitViews()
 {

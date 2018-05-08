@@ -76,7 +76,7 @@ float g_rate;				// Particles to emit per second
 //Variables for Fields 
 float  g_fieldCenterForceUpdate;
 float  g_fieldExtremityForceUpdate;
-float  g_fieldForceInterpolationUpdate;
+float  g_fieldInterpolationForceUpdate;
 float3 g_fieldPositionUpdate;
 float g_fieldSizeUpdate;				// viewport width / 100
 int	  g_fieldNbr;		//Number of fields to render at current frame

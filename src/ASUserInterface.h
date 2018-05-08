@@ -76,7 +76,6 @@ class ASUserInterface
 	ASUserInterface();
 	~ASUserInterface();
 public:
-	static vector<tuple<string, string>> GetUserFileBuffer();
 	static int currentKey;
 	static bool keyReleased;
 	static D3DXVECTOR2 cursorPosition;
@@ -85,6 +84,7 @@ public:
 	static int mouseButton;
 	static bool mouseReleased;
 
+	static vector<tuple<string, string>> GetUserFileBuffer();
 	static void MouseMoved(WPARAM wParam, LPARAM lParam);
 	static void LButtonDown();
 	static void LButtonUp();
@@ -101,6 +101,18 @@ public:
 	static void ResetInput();
 
 };
+
+int ASUserInterface::currentKey = 0;
+bool ASUserInterface::keyReleased = true;
+D3DXVECTOR2 ASUserInterface::cursorPosition = D3DXVECTOR2();
+D3DXVECTOR2 ASUserInterface::cursorOffset = D3DXVECTOR2();
+float ASUserInterface::mouseWheelDelta = 0.0f;
+int ASUserInterface::mouseButton = 0;
+bool ASUserInterface::mouseReleased = false;
+
+effectIntVariable	ASUserInterface::m_bvIsMouseReleased = effectIntVariable();
+effectIntVariable	ASUserInterface::m_bvClickEvent = effectIntVariable();
+effectFloatVariable	ASUserInterface::m_fvMouseWheelValue = effectFloatVariable();
 
 vector<tuple<string, string>> ASUserInterface::GetUserFileBuffer()
 {

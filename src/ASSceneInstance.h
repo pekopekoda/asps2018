@@ -5,10 +5,12 @@ class ASSceneObject;
 class ASSceneInstance
 {
 protected:
+	struct VERTEX_PROTOTYPE
+	{};
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//Same class as RenderTechnique except that it is specialized in instanced vertex buffers
 	//
-	unique_ptr<ASSceneObject> m_instancer;
+	ASSceneObject **m_instancer = nullptr;
 	//Instances need an index buffer in addition with the vertex buffer
 	ID3D10Buffer *m_firstBuffer;
 	ID3D10Buffer *m_indexedBuffer;
@@ -16,12 +18,14 @@ protected:
 	ASMesh		  m_instanceMesh;
 	const char* m_meshPath;
 
+	const char* m_techniqueName;
 	ID3D10EffectTechnique	*m_technique;
 	//Handle on the layout for the vertex buffers
 	ID3D10InputLayout		*m_layout;
 	//Number of instances to send in the instance vertex buffer
 	UINT m_instanceCount;
 	effectResourceVariable m_rrMainRenderResource;
+	effectResourceVariables m_vEffectResourceVariable2D;
 	//Each vertex buffer needs a layout prototype for the shader to interpret its raw data (shared_ptr<ASSceneObject> instancer, const char* meshPatheg. position, index)
 
 	ID3D10Buffer **m_instancerBuffer;
@@ -32,36 +36,48 @@ protected:
 		return{};
 	}
 	virtual UINT GetSizeOfVertexPrototype();
-
 	ASSceneInstance();
-	template<class T>
-	ASSceneInstance(T *instancer, const char* meshPath);
 
 public:
+	virtual void SetInstancer(ASSceneObject * instancer);
 	virtual effectResourceVariable *GetMainRenderResource();
-	void FirstPass();
-	void Init(const char *techniqueName, const char * meshPath, UINT instanceCount, ID3D10Buffer *instancerBuffer, UINT sizeOfInstancerVertexPrototype);
-	void InitShaderResources(vector<tuple<string, string>> vsBuf);
+	virtual void FirstPass();
+	virtual void InitShaderResources(vector<tuple<string, string>> vsBuf);
 	void InitBuffers();
-	void Clear();
+	virtual void Clear();
 	virtual ~ASSceneInstance();	
 
 };
 
-
-void ASSceneInstance::Init(const char *techniqueName, const char * meshPath, UINT instanceCount, ID3D10Buffer *instancerBuffer, UINT sizeOfInstancerVertexPrototype)
+UINT ASSceneInstance::GetSizeOfVertexPrototype()
 {
-	m_instanceCount = instanceCount;
-	m_instancerBuffer = &instancerBuffer;
+	return sizeof(VERTEX_PROTOTYPE);
+}
+
+void ASSceneInstance::SetInstancer(ASSceneObject *instancer)
+{
+	m_instancer = &instancer;
+}
+
+ASSceneInstance::ASSceneInstance(){}
+
+void ASSceneInstance::InitShaderResources(vector<tuple<string, string>> vsBuf)
+{
+}
+
+void ASSceneInstance::InitBuffers()
+{
+	UINT sizeOfInstancerVertexPrototype = (*m_instancer)->GetSizeOfVertexPrototype();
+	m_instanceCount = (*m_instancer)->GetMaxCount();
 	m_sizeOfInstancerVertexPrototype = sizeOfInstancerVertexPrototype;
 
-	m_technique = ASRenderer::GetTechniqueByName(techniqueName);
+	m_technique = ASRenderer::GetTechniqueByName(m_techniqueName);
 	D3D10_PASS_DESC passDesc;
 	m_technique->GetPassByIndex(0)->GetDesc(&passDesc);
 	const vector<D3D10_INPUT_ELEMENT_DESC> proto = GetLayoutPrototype();
 	ASRenderer::CreateInputLayout(GetLayoutPrototype(), passDesc, &m_layout);
 
-	HRESULT hr = (ASMesh::LoadFromFile(&m_instanceMesh, meshPath)) ? S_OK : S_FALSE;
+	HRESULT hr = (ASMesh::LoadFromFile(&m_instanceMesh, m_meshPath)) ? S_OK : S_FALSE;
 	test(hr, "Mesh load failed");
 	UINT vertexSize = m_instanceMesh.GetVertexSize();
 	UINT indexSize = m_instanceMesh.GetIndexSize();
@@ -114,10 +130,4 @@ void ASSceneInstance::FirstPass()
 	ASRenderer::DrawInstance(m_instanceMesh.GetIndexCount(), m_instanceCount);
 }
 
-template<class T>
-ASSceneInstance::ASSceneInstance(T *instancer, const char* meshPath)
-{
-	m_instancer = make_unique<ASSceneObject>(instancer);
-	m_meshPath = meshPath;
-}
 ASSceneInstance::~ASSceneInstance() {}

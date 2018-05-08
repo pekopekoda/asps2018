@@ -1,6 +1,7 @@
 #pragma once
 #include <tuple>
 #include "ASSceneObject.h"
+#include "ASSceneInstance.h"
 
 constexpr char* g_pmeshCfg = "Particle mesh";
 constexpr char* g_ptexCfg = "Particle texture";
@@ -12,6 +13,8 @@ extern const char* g_meshPath;
 
 class ASParticles : public ASSceneObject
 {
+	const UINT m_maxCount = 2000;
+	const char* m_techniqueName = "RenderParticles";
 	struct VERTEX_PROTOTYPE//particle vertex properties
 	{
 		D3DXVECTOR3 pos;
@@ -41,10 +44,9 @@ class ASParticles : public ASSceneObject
 	effectResourceVariable m_rrRampColor;
 
 
-	bool m_isFirstFrame;
+	bool m_isFirstFrame = true;
 	float m_fLastEmittedTime;
-	UINT m_maxParticles = 2000;
-	float m_rateVariation = 0.1f * float(m_maxParticles);
+	float m_rateVariation = 0.1f * float(m_maxCount);
 	string m_texturePath;
 	string m_normalMapPath;
 	string m_rampTexturePath;
@@ -67,25 +69,24 @@ class ASParticles : public ASSceneObject
 
 public:
 	UINT GetSizeOfVertexPrototype();
-	void Init(const char *techniqueName, UINT nbr);
 	void FirstPass(bool isFirstFrame = false);
-	void SecondPass();
 
 	void InitShaderResources(vector<tuple<string, string>> vsBuf);
 	void InitViews();
-	void InitShaders();
 	void InitBuffers();
 	void Render();
 	void Clear();
-	ASParticles();
-	template <class T>
-	ASParticles(T* parent);
+	ASParticles(ASScene *scene);
 	~ASParticles();
 };
 
 
 class ASParticlesInstances: public ASSceneInstance
 {
+	const char* m_techniqueName = "UpdateParticles";
+	const char* m_meshPath = g_meshPath;
+	ASParticles *m_instancer = nullptr;
+
 	struct VERTEX_PROTOTYPE//particle vertex properties
 	{
 		D3DXVECTOR3 position;
@@ -93,7 +94,6 @@ class ASParticlesInstances: public ASSceneInstance
 		D3DXVECTOR2 UV;
 	};
 public:
-	UINT GetSizeOfVertexPrototype();
 	const vector<D3D10_INPUT_ELEMENT_DESC> GetLayoutPrototype()
 	{
 		return
@@ -109,65 +109,13 @@ public:
 			{ "MASS"    , 0, DXGI_FORMAT_R32_FLOAT,		  1, 36, D3D10_INPUT_PER_INSTANCE_DATA, 1 },
 		};
 	}
-	void InitBuffers();
-	ASParticlesInstances();
-	ASParticlesInstances(ASParticles *instancer, const char* meshPath);
-	~ASParticlesInstances();
+	void InitShaderResources(vector<tuple<string, string>> vsBuf);
+	
 };
-
 
 UINT ASParticles::GetSizeOfVertexPrototype()
 {
 	return sizeof(VERTEX_PROTOTYPE);
-}
-
-void ASParticles::Init(const char *techniqueName, UINT nbr)
-{
-	m_firstBuffer = NULL;
-	m_secondBuffer = NULL;
-	
-	m_technique = ASRenderer::GetTechniqueByName(techniqueName);
-	D3D10_PASS_DESC passDesc;
-	m_technique->GetPassByIndex(0)->GetDesc(&passDesc);
-	const vector<D3D10_INPUT_ELEMENT_DESC> proto = GetLayoutPrototype();
-	ASRenderer::CreateInputLayout(GetLayoutPrototype(), passDesc, &m_layout);
-
-	VERTEX_PROTOTYPE vp1;
-	vector<VERTEX_PROTOTYPE> vps;
-	vps.assign(1, vp1);
-
-	vps[0].pos		 = D3DXVECTOR3(0.1f, 0.0f, 0.0f); //position
-	vps[0].vel		 = D3DXVECTOR3(1.0f, 1.0f, 1.0f); //direction
-	vps[0].type		 = int(0);//type
-	vps[0].lifespan	 = float(-1);//lifespan
-	vps[0].birth	 = float(1);//birth
-	vps[0].mass		 = float(1);//mass
-	UINT vertSize = sizeof(VERTEX_PROTOTYPE);
-
-	D3D10_BUFFER_DESC vbdesc =
-	{
-		vertSize,
-		D3D10_USAGE_DEFAULT,
-		D3D10_BIND_VERTEX_BUFFER,
-		0,
-		0
-	};
-
-	D3D10_SUBRESOURCE_DATA vbInitData;
-	ZeroMemory(&vbInitData, sizeof(D3D10_SUBRESOURCE_DATA));
-
-	vbInitData.pSysMem = &vps[0];
-	UINT _size = sizeof(vps.data());
-	vbInitData.SysMemPitch = _size;
-	vbInitData.SysMemSlicePitch = _size;
-	//Buffer creation
-	ASRenderer::CreateBuffer(vbdesc, vbInitData, &m_bufferStart);
-
-	vbdesc.ByteWidth = nbr * vertSize;
-	vbdesc.BindFlags |= D3D10_BIND_STREAM_OUTPUT;
-	ASRenderer::CreateBuffer(vbdesc, &m_firstBuffer);
-	ASRenderer::CreateBuffer(vbdesc, &m_secondBuffer);
-	m_vBuffers = { m_bufferStart, m_firstBuffer , m_secondBuffer };
 }
 
 void ASParticles::FirstPass(bool isFirstFrame)
@@ -208,7 +156,6 @@ void ASParticles::InitShaderResources(vector<tuple<string, string>> vsBuf)
 	m_rrMaxParticles = effectIntVariable("g_maxParticles");
 	m_ivCurrentAction = effectIntVariable("g_particlesInterface");
 	m_rrMainRenderResource = effectResourceVariable("txParticles");
-	m_rrParticlesVelocity = effectResourceVariable("txParticlesParam");
 	m_rrBump = effectResourceVariable("txBump");
 	m_rrDiffuse = effectResourceVariable("txDiffuse");
 	m_rrRampColor = effectResourceVariable("txRamp");
@@ -230,11 +177,7 @@ void ASParticles::InitShaderResources(vector<tuple<string, string>> vsBuf)
 		string name = std::get<0>(*it);
 		string value = std::get<1>(*it);
 
-		if(name == g_pmeshCfg)
-		{
-			m_instance = make_unique<ASParticlesInstances>(this, g_meshPath + *value.c_str());
-		}
-		else if (name == g_ptexCfg)
+		if (name == g_ptexCfg)
 		{
 			string txtPath = g_texturePath + value;
 			string bumpPath = g_texturePath + string("NM_") + value;
@@ -257,12 +200,11 @@ void ASParticles::InitShaderResources(vector<tuple<string, string>> vsBuf)
 		else if (name == g_pnbrCfg)
 		{
 			m_rrMaxParticles.Push(atoi(value.c_str()));
-			m_fvRate.Push(0.1f * float(m_maxParticles));
+			m_fvRate.Push(0.1f * float(m_maxCount));
 		}
 	}
 	
 	m_vEffectResourceVariable2D.Add(&m_rrMainRenderResource);
-	m_vEffectResourceVariable2D.Add(&m_rrParticlesVelocity);
 
 	m_fLastEmittedTime = 0.0f;
 	m_fvTimeToNextEmit.Push(0.0f);
@@ -293,7 +235,51 @@ void ASParticles::InitViews()
 
 void ASParticles::InitBuffers()
 {
-	Init("UpdateParticles", m_maxParticles + 1);
+	m_firstBuffer = NULL;
+	m_secondBuffer = NULL;
+
+	m_technique = ASRenderer::GetTechniqueByName(m_techniqueName);
+	D3D10_PASS_DESC passDesc;
+	m_technique->GetPassByIndex(0)->GetDesc(&passDesc);
+	const vector<D3D10_INPUT_ELEMENT_DESC> proto = GetLayoutPrototype();
+	ASRenderer::CreateInputLayout(GetLayoutPrototype(), passDesc, &m_layout);
+
+	VERTEX_PROTOTYPE vp1;
+	vector<VERTEX_PROTOTYPE> vps;
+	vps.assign(1, vp1);
+
+	vps[0].pos = D3DXVECTOR3(0.1f, 0.0f, 0.0f); //position
+	vps[0].vel = D3DXVECTOR3(1.0f, 1.0f, 1.0f); //direction
+	vps[0].type = int(0);//type
+	vps[0].lifespan = float(-1);//lifespan
+	vps[0].birth = float(1);//birth
+	vps[0].mass = float(1);//mass
+	UINT vertSize = sizeof(VERTEX_PROTOTYPE);
+
+	D3D10_BUFFER_DESC vbdesc =
+	{
+		vertSize,
+		D3D10_USAGE_DEFAULT,
+		D3D10_BIND_VERTEX_BUFFER,
+		0,
+		0
+	};
+
+	D3D10_SUBRESOURCE_DATA vbInitData;
+	ZeroMemory(&vbInitData, sizeof(D3D10_SUBRESOURCE_DATA));
+
+	vbInitData.pSysMem = &vps[0];
+	UINT _size = sizeof(vps.data());
+	vbInitData.SysMemPitch = _size;
+	vbInitData.SysMemSlicePitch = _size;
+	//Buffer creation
+	ASRenderer::CreateBuffer(vbdesc, vbInitData, &m_bufferStart);
+
+	vbdesc.ByteWidth = (m_maxCount+1) * vertSize;
+	vbdesc.BindFlags |= D3D10_BIND_STREAM_OUTPUT;
+	ASRenderer::CreateBuffer(vbdesc, &m_firstBuffer);
+	ASRenderer::CreateBuffer(vbdesc, &m_secondBuffer);
+	m_vBuffers = { m_bufferStart, m_firstBuffer , m_secondBuffer };
 }   
 
 //--------------------------------------------------------------------------------------
@@ -325,7 +311,7 @@ void ASParticles::Render()
 		float rate = m_fvRate.val;
 		rate += (ASUserInterface::mouseWheelDelta < 0.0) ? -m_rateVariation : m_rateVariation;
 		rate = (rate >= m_rateVariation)  ? rate : m_rateVariation;
-		rate = (rate <= m_maxParticles) ? rate : m_maxParticles;
+		rate = (rate <= m_maxCount) ? rate : m_maxCount;
 		m_fvRate.Push(rate);
 	}
 
@@ -341,13 +327,32 @@ void ASParticles::Render()
 	SwapBuffers();
 
 	m_isFirstFrame = false;
-
-	if(m_instance != nullptr)
-		m_instance->FirstPass();
 }
 
 void ASParticles::Clear(){}
-ASParticles::ASParticles(): m_isFirstFrame(true)
-{}
-
+ASParticles::ASParticles(ASScene *scene)
+{
+	m_scene = scene;
+}
 ASParticles::~ASParticles(){}
+
+
+
+void ASParticlesInstances::InitShaderResources(vector<tuple<string, string>> vsBuf)
+{
+	m_rrMainRenderResource = effectResourceVariable("txParticlesParam");
+
+	for (auto it = vsBuf.begin(); it != vsBuf.end(); it++)
+	{
+		string name = std::get<0>(*it);
+		string value = std::get<1>(*it);
+
+		if (name == g_pmeshCfg)
+		{
+			m_meshPath = g_meshPath + *value.c_str();
+		}
+
+		m_vEffectResourceVariable2D.Add(&m_rrMainRenderResource);
+
+	}
+}

@@ -72,6 +72,7 @@ void ASScene::Init(vector<tuple<string,string>> vsBuf)
 	m_mvWorldViewProj = effectMatrixVariable("matWorldViewProjection");
 	m_mvWorld = effectMatrixVariable("matWorld");
 	m_mvProj = effectMatrixVariable("matProj");
+	m_mvView = effectMatrixVariable("matView");
 	m_fvTime = effectFloatVariable("g_time");
 	m_fvDeltaTime = effectFloatVariable("g_deltaTime");
 	m_fvGravity = effectFloatVariable("GRAVITY");
@@ -104,6 +105,8 @@ void ASScene::Init(vector<tuple<string,string>> vsBuf)
 	ASUserInterface::InitInput();
 	// Initialize the world matrix
 	D3DXMatrixIdentity(&m_mvWorld.m);
+
+	m_camera = make_unique<ASCamera>(this);
 	m_camera->Reset();
 
 	// Initialize the projection matrix
@@ -117,9 +120,10 @@ void ASScene::Init(vector<tuple<string,string>> vsBuf)
 	Picking3D();
 
 	m_screen = make_unique<ASScreen>(this);
-	m_camera = make_unique<ASCamera>(new ASCamera(this));
-	m_objects.push_back(make_unique<ASFields>(new ASFields(this)));
-	m_objects.push_back(make_unique<ASParticles>(new ASFields(this)));
+	m_objects.push_back(make_unique<ASFields>(this));
+	m_objects.push_back(make_unique<ASParticles>(this));
+	m_instances.push_back(make_unique<ASParticlesInstances>());
+	m_instances.back()->SetInstancer(m_objects.back().get());
 
 	m_screen->InitShaderResources(vsBuf);
 	for (auto &o : m_objects)
@@ -130,13 +134,21 @@ void ASScene::Init(vector<tuple<string,string>> vsBuf)
 	{
 		o->InitViews();
 		auto p = o->GetMainRenderResource();
-		m_screen->AddEffectResourceVariable(p.first);
-		if (p.second != nullptr)
-			m_screen->AddEffectResourceVariable(p.second);
+		m_screen->AddEffectResourceVariable(p);
 	}
+
+	for (auto &o : m_instances)
+	{
+		auto p = o->GetMainRenderResource();
+		m_screen->AddEffectResourceVariable(p);
+	}
+
 
 	m_screen->InitBuffers();
 	for (auto &o : m_objects)
+		o->InitBuffers();
+
+	for (auto &o : m_instances)
 		o->InitBuffers();
 }
 
@@ -231,9 +243,13 @@ void ASScene::Clear()
 	m_screen->Clear();
 	for (auto &o : m_objects)
 		o->Clear();
+	for (auto &o : m_instances)
+		o->Clear();
 }
 
 ASScene::ASScene()
 {
 	m_fvTime.val = 0.0f;
 }
+
+ASScene::~ASScene() {}

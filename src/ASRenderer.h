@@ -12,13 +12,13 @@ using namespace std;
 #define HEIGHT 1080
 //Random
 #define RAND(a,b) ((rand()/(float)RAND_MAX)*((b)-(a))+(a))
+
 //Test routine for each device operation on the device
-void test(HRESULT hr, char *errTitle = "Error");
-void test(HRESULT hr, char *errTitle)
+void test(HRESULT hr, char *errMsg ="Unrecognized error.")
 {
 	if (hr != S_OK)
 	{
-		LPCSTR errMsg = _com_error(hr).ErrorMessage();
+		LPCSTR errTitle = _com_error(hr).ErrorMessage();
 		int response = MessageBoxA(NULL, errMsg, errTitle, MB_ABORTRETRYIGNORE);
 		switch (response)
 		{
@@ -117,7 +117,7 @@ class ASRenderer
 
 	static ID3D10Device *m_d3dDevice;
 	//m_window contains the dimensions of the window and a handle to the window object
-	static struct
+	static struct windowstruct
 	{
 		//Window
 		HINSTANCE hInst ;									
@@ -171,7 +171,7 @@ public:
 	//Create new effect technique with specific name
 	static ID3D10EffectTechnique* GetTechniqueByName(LPCSTR techniqueName);
 
-	static ID3D10EffectScalarVariable* GetVariableByName(LPCSTR techniqueName);
+	static ID3D10EffectVariable* GetVariableByName(LPCSTR techniqueName);
 
 	//Set the layout as the current input layout before vertex draw
 	static void SetInputLayout(ID3D10InputLayout *pIL);
@@ -194,6 +194,12 @@ public:
 	static void DrawInstance(UINT IndexCountPerInstance, UINT InstanceCount, UINT StartIndexLocation = 0, INT BaseVertexLocation = 0, UINT StartInstanceLocation = 0);
 	static void Clear();
 };
+
+ID3D10Device* ASRenderer::m_d3dDevice = nullptr;
+D3D10_DRIVER_TYPE	ASRenderer::m_d3dDriverType = D3D10_DRIVER_TYPE_NULL;
+IDXGISwapChain*		ASRenderer::m_d3dSwapChain = nullptr;
+ID3D10Effect*		ASRenderer::m_d3dEffect = nullptr;
+ASRenderer::windowstruct ASRenderer::m_window = {};
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -252,8 +258,6 @@ HRESULT ASRenderer::OpenWindow(HINSTANCE hInstance, int nCmdShow, LRESULT(CALLBA
 		return E_FAIL;
 
 	ShowWindow(m_window.hWnd, nCmdShow);
-
-	m_d3dDriverType = D3D10_DRIVER_TYPE_NULL;
 
 	//Direct3D device///////////////////////////////////////////////////////////////////////////////////
 	/*RECT rc;
@@ -435,7 +439,7 @@ HRESULT ASRenderer::CreateEffect()
 	//#endif
 
 	ID3D10Blob *compErrors;
-	hr = D3DX10CreateEffectFromFile(("ASEntryPoint.fx"), NULL, NULL, "fx_4_0", dwShaderFlags, 0, m_d3dDevice, NULL,
+	hr = D3DX10CreateEffectFromFile(("../ASEntryPoint.fx"), NULL, NULL, "fx_4_0", dwShaderFlags, 0, m_d3dDevice, NULL,
 		NULL, &m_d3dEffect, &compErrors, NULL);
 	char* pCompileErrors = static_cast<char*>(compErrors->GetBufferPointer());
 	test(hr, pCompileErrors);
@@ -488,6 +492,11 @@ HRESULT ASRenderer::CreateShaderResourceView(ID3D10Resource *tex, D3D10_SHADER_R
 ID3D10EffectTechnique* ASRenderer::GetTechniqueByName(LPCSTR techniqueName)
 {
 	return m_d3dEffect->GetTechniqueByName(techniqueName);
+}
+
+ID3D10EffectVariable * ASRenderer::GetVariableByName(LPCSTR techniqueName)
+{
+	return m_d3dEffect->GetVariableByName(techniqueName);
 }
 
 void ASRenderer::SetInputLayout(ID3D10InputLayout *pIL)
@@ -665,7 +674,7 @@ public:
 	friend class effectResourceVariable;
 	texture1D(unsigned int width=WIDTH)
 	{
-		test(ASRenderer::CreateTexture1D(&t));
+		test(ASRenderer::CreateTexture1D(&t, width));
 	}
 	ULONG Release() { return t->Release(); }
 };
@@ -687,7 +696,6 @@ public:
 //and Depth stencil//////////////////////////////////////////////////////////////////////////////////
 class renderTargetViews
 {
-	static ID3D10Device *const m_d3dDevice;
 	vector<ID3D10RenderTargetView*> rts;
 	ID3D10DepthStencilView *m_dsv = nullptr;
 
@@ -705,10 +713,10 @@ class renderTargetViews
 		descDepth1D.Format = DXGI_FORMAT_D32_FLOAT;
 		descDepth1D.BindFlags = D3D10_BIND_DEPTH_STENCIL;
 
-		hr = m_d3dDevice->CreateTexture1D(&descDepth1D, NULL, &pDepthStencil1D);
+		hr = ASRenderer::m_d3dDevice->CreateTexture1D(&descDepth1D, NULL, &pDepthStencil1D);
 		test(hr);
 
-		hr = m_d3dDevice->CreateDepthStencilView(pDepthStencil1D, NULL, &m_dsv);
+		hr = ASRenderer::m_d3dDevice->CreateDepthStencilView(pDepthStencil1D, &g_dsvDesc, &m_dsv);
 		test(hr);
 	}
 
@@ -725,10 +733,10 @@ class renderTargetViews
 
 		ID3D10Texture2D* pDepthStencil2D;
 
-		hr = m_d3dDevice->CreateTexture2D(&descDepth2D, NULL, &pDepthStencil2D);
+		hr = ASRenderer::m_d3dDevice->CreateTexture2D(&descDepth2D, NULL, &pDepthStencil2D);
 		test(hr);
 
-		hr = m_d3dDevice->CreateDepthStencilView(pDepthStencil2D, NULL, &m_dsv);
+		hr = ASRenderer::m_d3dDevice->CreateDepthStencilView(pDepthStencil2D, &g_dsvDesc, &m_dsv);
 		test(hr);
 	}
 
@@ -747,7 +755,7 @@ public:
 	{
 		g_rtDesc.ViewDimension = D3D10_RTV_DIMENSION_TEXTURE2D;
 		ID3D10RenderTargetView *rtv;
-		m_d3dDevice->CreateRenderTargetView(tex.t, &g_rtDesc, &rtv);
+		ASRenderer::m_d3dDevice->CreateRenderTargetView(tex.t, &g_rtDesc, &rtv);
 		rts.push_back(rtv);
 		if (m_dsv == nullptr)
 			CreateDepthStencilView2D(g_desc2D.Width, g_desc2D.Height);
@@ -755,28 +763,28 @@ public:
 
 	void SetRenderTarget(int idx)
 	{
-		m_d3dDevice->OMSetRenderTargets(1, &rts[idx], m_dsv);
+		ASRenderer::m_d3dDevice->OMSetRenderTargets(1, &rts[idx], m_dsv);
 	}
 	void SetRenderTargets()
 	{
-		m_d3dDevice->OMSetRenderTargets(rts.size(), rts.data(), m_dsv);
+		ASRenderer::m_d3dDevice->OMSetRenderTargets(rts.size(), rts.data(), m_dsv);
 	}
 	void ClearRenderTarget(int idx)
 	{
 		float color[] = { 0.0f, 0.0f, 0.0f, 0.0f };
-		m_d3dDevice->ClearRenderTargetView(rts[idx], color);
+		ASRenderer::m_d3dDevice->ClearRenderTargetView(rts[idx], color);
 	}
 	void ClearRenderTargets()
 	{
 		for (auto r : rts)
 		{
 			float color[] = { 0.0f, 0.0f, 0.0f, 0.0f };
-			m_d3dDevice->ClearRenderTargetView(r, color);
+			ASRenderer::m_d3dDevice->ClearRenderTargetView(r, color);
 		}
 	}
 	void ClearDepthStencilView()
 	{
-		m_d3dDevice->ClearDepthStencilView(m_dsv, D3D10_CLEAR_DEPTH, 1.0f, 0);
+		ASRenderer::m_d3dDevice->ClearDepthStencilView(m_dsv, D3D10_CLEAR_DEPTH, 1.0f, 0);
 	}
 	void Release()
 	{
@@ -787,7 +795,6 @@ public:
 		rts.clear();
 	}
 };
-ID3D10Device *const renderTargetViews::m_d3dDevice = ASRenderer::m_d3dDevice;
 
 class effectResourceVariable
 {

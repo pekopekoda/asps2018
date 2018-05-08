@@ -3,7 +3,7 @@
 #include "ASSceneObject.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-constexpr uint8_t g_maxFields = 50;				//number of fields in program
+//constexpr uint8_t m_maxCount = 50;				//number of fields in program
 // The following are used with interface input query to warn the program that the user may change the parameters of the currenlty selected field
 //or about different other events
 //constexpr struct fieldCommandStruct
@@ -21,6 +21,9 @@ constexpr char*	  fieldnbrCfg = "Fields initial number";
 
 class ASFields : public ASSceneObject
 {
+	const UINT m_maxCount = 50;
+	const char* m_techniqueName = "UpdateFields";
+
 	struct VERTEX_PROTOTYPE
 	{
 		float index;
@@ -36,26 +39,6 @@ class ASFields : public ASSceneObject
 		D3DXVECTOR4 dummy;
 	};
 public:
-	inline const vector<D3D10_INPUT_ELEMENT_DESC> GetLayoutPrototype()
-	{
-		return
-		{
-			{ "INDEX", 0, DXGI_FORMAT_R32_FLOAT, 0, 0, D3D10_INPUT_PER_VERTEX_DATA, 0 },  // Field's serial number
-			{ "ISSELECTED", 0, DXGI_FORMAT_R32_UINT, 0, 4, D3D10_INPUT_PER_VERTEX_DATA, 0 },  // if mouse pressed and cursor on the field, set to true
-			{ "FIELDTYPE", 0, DXGI_FORMAT_R32_FLOAT, 0, 8, D3D10_INPUT_PER_VERTEX_DATA, 0 },  // type : 0 = bouncer; 1 = directional; 2 = portal; 3 = particles emitter
-			{ "SIZE", 0, DXGI_FORMAT_R32_FLOAT, 0, 12, D3D10_INPUT_PER_VERTEX_DATA, 0 },  // size
-			{ "OFFSET", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 16, D3D10_INPUT_PER_VERTEX_DATA, 0 }, // Object pick offset
-			{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 28, D3D10_INPUT_PER_VERTEX_DATA, 0 }, // position in 3D space
-			{ "GOAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 40, D3D10_INPUT_PER_VERTEX_DATA, 0 }, // Goal. Only for directional, portals and bouncers
-			{ "FORCE", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 52, D3D10_INPUT_PER_VERTEX_DATA, 0 }, // strength of the field
-			{ "SV_Position", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 64, D3D10_INPUT_PER_VERTEX_DATA, 0 }, // position of the field in texture sent to particles
-			{ "FIELDCOLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 80, D3D10_INPUT_PER_VERTEX_DATA, 0 }, // color of the field
-			{ "DUMMY", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 96, D3D10_INPUT_PER_VERTEX_DATA, 0 }, // optional parameter to make cool custom samples
-		};
-	}
-	void Init(const char *techniqueName);
-	void FirstPass();
-	void SecondPass();
 	effectResourceVariable m_rrFieldsPos;
 	effectResourceVariable m_rrFieldsGoal;
 	effectResourceVariable m_rrFieldsStrength;
@@ -73,15 +56,31 @@ public:
 	int m_fieldsNumber = 10;
 	renderTargetViews m_pRenderTargetViews2D1D;
 
-public:
+	inline const vector<D3D10_INPUT_ELEMENT_DESC> GetLayoutPrototype()
+	{
+		return
+		{
+			{ "INDEX", 0, DXGI_FORMAT_R32_FLOAT, 0, 0, D3D10_INPUT_PER_VERTEX_DATA, 0 },  // Field's serial number
+			{ "ISSELECTED", 0, DXGI_FORMAT_R32_UINT, 0, 4, D3D10_INPUT_PER_VERTEX_DATA, 0 },  // if mouse pressed and cursor on the field, set to true
+			{ "FIELDTYPE", 0, DXGI_FORMAT_R32_FLOAT, 0, 8, D3D10_INPUT_PER_VERTEX_DATA, 0 },  // type : 0 = bouncer; 1 = directional; 2 = portal; 3 = particles emitter
+			{ "SIZE", 0, DXGI_FORMAT_R32_FLOAT, 0, 12, D3D10_INPUT_PER_VERTEX_DATA, 0 },  // size
+			{ "OFFSET", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 16, D3D10_INPUT_PER_VERTEX_DATA, 0 }, // Object pick offset
+			{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 28, D3D10_INPUT_PER_VERTEX_DATA, 0 }, // position in 3D space
+			{ "GOAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 40, D3D10_INPUT_PER_VERTEX_DATA, 0 }, // Goal. Only for directional, portals and bouncers
+			{ "FORCE", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 52, D3D10_INPUT_PER_VERTEX_DATA, 0 }, // strength of the field
+			{ "SV_Position", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 64, D3D10_INPUT_PER_VERTEX_DATA, 0 }, // position of the field in texture sent to particles
+			{ "FIELDCOLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 80, D3D10_INPUT_PER_VERTEX_DATA, 0 }, // color of the field
+			{ "DUMMY", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 96, D3D10_INPUT_PER_VERTEX_DATA, 0 }, // optional parameter to make cool custom samples
+		};
+	}
+	void FirstPass();
+	void SecondPass();
 	void UpdateFieldsNumber(int incr);
 	void InitShaderResources(vector<tuple<string, string>> vsBuf);
 	void InitViews();
 	void InitBuffers();
-	void InitShaders();
 	void Render();
-	template <class T>
-	ASFields(T* parent);
+	ASFields(ASScene *scene);
 };
 
 void ASFields::FirstPass() 
@@ -104,7 +103,7 @@ void ASFields::FirstPass()
 	m_technique->GetDesc(&techDesc);
 
 	m_technique->GetPassByIndex(0)->Apply(0);
-	ASRenderer::Draw(g_maxFields * 2);
+	ASRenderer::Draw(m_maxCount * 2);
 
 	pBuffers[0] = NULL;
 	ASRenderer::StreamOutputSetTargets(1, pBuffers, offset);
@@ -124,7 +123,7 @@ void ASFields::SecondPass()
 
 void ASFields::UpdateFieldsNumber(int incr)
 {
-	if ((m_fieldsNumber + incr <= g_maxFields) && (m_fieldsNumber + incr > 0.0))
+	if ((m_fieldsNumber + incr <= m_maxCount) && (m_fieldsNumber + incr > 0.0))
 	{
 		m_fieldsNumber += incr;
 		m_ivFieldsNumber.Push(m_fieldsNumber);
@@ -144,7 +143,7 @@ void ASFields::InitShaderResources(vector<tuple<string, string>> vsBuf)
 	m_fvSizeUpdate = effectFloatVariable("g_fieldSizeUpdate");
 	m_fvCenterForceUpdate = effectFloatVariable("g_fieldCenterForceUpdate");
 	m_fvExtremityForceUpdate = effectFloatVariable("g_fieldExtremityForceUpdate");
-	m_fvForceInterpolationUpdate = effectFloatVariable("g_fieldForceInterpolationUpdate");
+	m_fvForceInterpolationUpdate = effectFloatVariable("g_fieldInterpolationForceUpdate");
 	m_vvFieldPositionUpdate = effectVectorVariable("g_fieldPositionUpdate");
 
 	for (auto it = vsBuf.begin(); it != vsBuf.end(); it++)
@@ -175,7 +174,7 @@ void ASFields::InitViews()
 	for (auto &t : pRenderTargets2D)
 		*t = texture2D(WIDTH, HEIGHT);
 	for (auto &t : pRenderTargets1D)
-		*t = texture1D(g_maxFields);
+		*t = texture1D(m_maxCount);
 
 	ASSceneObject::InitViews(pRenderTargets1D);
 	ASSceneObject::InitViews(pRenderTargets2D);
@@ -189,19 +188,18 @@ void ASFields::InitViews()
 
 void ASFields::InitBuffers()
 {
-	const char* techniqueName = "UpdateFields";
-	m_technique = ASRenderer::GetTechniqueByName(techniqueName);
+	m_technique = ASRenderer::GetTechniqueByName(m_techniqueName);
 	D3D10_PASS_DESC passDesc;
 	m_technique->GetPassByIndex(0)->GetDesc(&passDesc);
 	const vector<D3D10_INPUT_ELEMENT_DESC> proto = GetLayoutPrototype();
 	ASRenderer::CreateInputLayout(GetLayoutPrototype(), passDesc, &m_layout);
 
-	const UINT nbr = g_maxFields * 2;
+	const UINT nbr = m_maxCount * 2;
 	VERTEX_PROTOTYPE vp1;
 	vector<VERTEX_PROTOTYPE> vps;
 	vps.assign(nbr, vp1);
 	int j = 0;
-	for (int i = 0; i < g_maxFields; i += 2)
+	for (int i = 0; i < m_maxCount; i += 2)
 	{
 		vps[i].index = float(j);
 		vps[i + 1].index = float(j) + 0.5f;//two indices for a field to render field info in a 1D render texture as a line
@@ -219,7 +217,7 @@ void ASFields::InitBuffers()
 	}
 	D3D10_BUFFER_DESC vbdesc =
 	{
-		g_maxFields * 2 * sizeof(VERTEX_PROTOTYPE),
+		m_maxCount * 2 * sizeof(VERTEX_PROTOTYPE),
 		D3D10_USAGE_DEFAULT,
 		D3D10_BIND_VERTEX_BUFFER | D3D10_BIND_STREAM_OUTPUT,
 		0,
@@ -270,7 +268,7 @@ void ASFields::Render()
 		};
 	}
 
-	//m_fvSizeUpdate.Push(ASRenderer::GetDimensions().x / (float(g_maxFields) * 2.0f));
+	//m_fvSizeUpdate.Push(ASRenderer::GetDimensions().x / (float(m_maxCount) * 2.0f));
 	//Set correct render targets
 	m_pRenderTargetViews2D1D.ClearRenderTargets();
 	m_pRenderTargetViews2D1D.ClearDepthStencilView();
@@ -289,4 +287,9 @@ void ASFields::Render()
 	{
 		SecondPass();
 	}
+}
+
+ASFields::ASFields(ASScene *scene)
+{
+	m_scene = scene;
 }

@@ -5,13 +5,15 @@
 
 constexpr float g_halfPI = 1.57079632f;
 
+class ASScene;
 class ASCamera
 {
+	ASScene *m_scene;
 	D3DXVECTOR3		m_position;//private coordinates
 	D3DXVECTOR2		m_rotation;
 
 	D3DXVECTOR3		m_vUp, m_vLook, m_vRight; // camera axis
-	D3DXMATRIX		m_matView;
+	D3DXMATRIX		m_matView{};
 	effectMatrixVariable m_mvView;
 
 public:
@@ -32,9 +34,7 @@ public:
 	void SetRotation(float x, float y);
 	void Rotate(float x, float y);
 	void Update(D3DXVECTOR2 cursorOffset, int mouseButton, float mouseWheelDelta);
-	ASCamera();
-	template <class T>
-	ASCamera(T* parent);
+	ASCamera(ASScene *parent);
 	~ASCamera();
 };
 
@@ -86,8 +86,8 @@ void		ASCamera::Rotate(float dx, float dy)
 }
 void ASCamera::Reset()
 {
-	m_rotation.x = m_rotation.y = 0;
-	m_position = D3DXVECTOR3(0, 1, -65);
+	m_rotation = D3DXVECTOR2(0.0f ,0.0f);
+	m_position = D3DXVECTOR3(0.0f, 1.0f, -65.0f);
 	// Initialize the view matrix
 	D3DXMatrixTranslation(&m_matView, -x, -y, -z);
 	m_vUp = D3DXVECTOR3(0.0f, 1.0f, 0.0f);
@@ -135,9 +135,11 @@ void ASCamera::Update(D3DXVECTOR2 cursorOffset, int mouseButton, float mouseWhee
 	m_mvView.Push(m);
 }
 
-ASCamera::ASCamera() : x(m_position.x), y(m_position.y), z(m_position.z), xyz(m_position), m(m_matView)
+ASCamera::~ASCamera() {}
+
+ASCamera::ASCamera(ASScene *parent) : x(m_position.x), y(m_position.y), z(m_position.z), xyz(m_position), m(m_matView)
 {
+	m_scene = parent;
 	m_mvView = effectMatrixVariable("matView");
 	Reset();
 }
-ASCamera::~ASCamera() {}

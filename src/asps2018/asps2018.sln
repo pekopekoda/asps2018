@@ -5,6 +5,15 @@ VisualStudioVersion = 14.0.25420.1
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "asps2018", "asps2018.vcxproj", "{1ED5CB5E-CD4E-4B2A-880F-FC2108936AE0}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "shaders", "shaders", "{CFD63F0D-CA52-4DBB-BD28-31E53C91A91F}"
+	ProjectSection(SolutionItems) = preProject
+		..\ASEntryPoint.fx = ..\ASEntryPoint.fx
+		..\..\Hlsl\ASFields.fx = ..\..\Hlsl\ASFields.fx
+		..\..\Hlsl\ASParticles.fx = ..\..\Hlsl\ASParticles.fx
+		..\..\Hlsl\ASScreen.fx = ..\..\Hlsl\ASScreen.fx
+		..\..\Hlsl\ASShaderGlobal.fx = ..\..\Hlsl\ASShaderGlobal.fx
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64

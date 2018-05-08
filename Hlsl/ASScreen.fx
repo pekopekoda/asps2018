@@ -11,16 +11,6 @@ struct VS_SCREENOUTPUT
 	unsigned int index		: INDEX;
 };
 
-
-int getCoordsIndex()
-{
-	for (int i = 0; i < g_dispCoordsSize; i++)
-	{
-		if (g_dispCoords[i].index == g_userInterface)
-			return i;
-	}
-	return 0;
-}
 VS_SCREENOUTPUT VSRenderScreen(VS_SCREENINPUT input)
 {
 	VS_SCREENOUTPUT output = (VS_SCREENOUTPUT) 0;
@@ -29,14 +19,12 @@ VS_SCREENOUTPUT VSRenderScreen(VS_SCREENINPUT input)
 	output.inTxr = float2((output.pos.x + 1) * 0.5, 1-(output.pos.y + 1) * 0.5);
 	
 	output.index = input.index;
-	if (g_dispCoords[input.index].index != g_userInterface)
-		output.index = getCoordsIndex();
-	 return output;
+	return output;
 }
 
 float4 PSRenderScreenWithText(VS_SCREENOUTPUT In) : SV_Target
 {
-	float4 _temp = g_dispCoords[In.index].coords;
+	float4 _temp = g_displayCoords;
 
 	float2 _begin = _temp.xy;
 	float2 _end   = _temp.zw;
@@ -74,11 +62,11 @@ float4 PSRenderScreenWithText(VS_SCREENOUTPUT In) : SV_Target
 	_test += _coords.x * _coords.y;
 	//Compute final result
 	_test  = saturate(_test);
-	if (In.inTxr<g_displayCoords.xy || In.inTxr>g_displayCoords.zw)
+	/*if (In.inTxr<g_displayCoords.xy || In.inTxr>g_displayCoords.zw)
 	{
 		In.inTxr.x = 0;
 		In.inTxr.y = 0;
-	}
+	}*/
 	float4 colorHUD = txHUD.Sample(samLinear, In.inTxr);
 	//And return
 	return colorHUD;
