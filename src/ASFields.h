@@ -172,9 +172,9 @@ void ASFields::InitViews()
 	textures1D pRenderTargets1D(m_vEffectResourceVariable1D.Size(), NULL);
 
 	for (auto &t : pRenderTargets2D)
-		*t = texture2D(WIDTH, HEIGHT);
+		t = &texture2D(WIDTH, HEIGHT);
 	for (auto &t : pRenderTargets1D)
-		*t = texture1D(m_maxCount);
+		t = &texture1D(m_maxCount);
 
 	ASSceneObject::InitViews(pRenderTargets1D);
 	ASSceneObject::InitViews(pRenderTargets2D);

@@ -242,7 +242,7 @@ void ASParticles::InitBuffers()
 	D3D10_PASS_DESC passDesc;
 	m_technique->GetPassByIndex(0)->GetDesc(&passDesc);
 	const vector<D3D10_INPUT_ELEMENT_DESC> proto = GetLayoutPrototype();
-	ASRenderer::CreateInputLayout(GetLayoutPrototype(), passDesc, &m_layout);
+	ASRenderer::CreateInputLayout(proto, passDesc, &m_layout);
 
 	VERTEX_PROTOTYPE vp1;
 	vector<VERTEX_PROTOTYPE> vps;

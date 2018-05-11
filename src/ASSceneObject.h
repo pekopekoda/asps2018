@@ -55,7 +55,7 @@ protected:
 public:
 	virtual UINT GetSizeOfVertexPrototype();
 	virtual UINT GetMaxCount();
-	void InitShaderResources(vector<tuple<string,string>> vsBuf);
+	virtual void InitShaderResources(vector<tuple<string,string>> vsBuf);
 	//Returns draw from buffer
 	ID3D10Buffer *GetFirstBuffer();
 	
@@ -173,7 +173,7 @@ HRESULT ASSceneObject::InitBuffers(vector<ID3D10Buffer*> vBuffers, vector<D3D10_
 	HRESULT hr;
 	// Create the input layout
 	D3D10_PASS_DESC PassDesc;
-	m_pRenderTechnique->GetPassByIndex(0)->GetDesc(&PassDesc);
+	test(m_pRenderTechnique->GetPassByIndex(0)->GetDesc(&PassDesc));
 
 	hr = ASRenderer::CreateInputLayout(layout, PassDesc, &m_pLayout);
 

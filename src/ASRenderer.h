@@ -137,7 +137,7 @@ class ASRenderer
 
 public:
 	//Open window
-	static HRESULT OpenWindow(HINSTANCE hInstance, int nCmdShow, LRESULT(CALLBACK *)(HWND, UINT, WPARAM, LPARAM));
+	static HRESULT OpenWindow(HINSTANCE hInstance, int nCmdShow, LRESULT(CALLBACK *WndProc)(HWND, UINT, WPARAM, LPARAM));
 	//Init viewport
 	static HRESULT InitViewport();
 	static D3DXVECTOR2 GetDimensions();
@@ -707,7 +707,7 @@ class renderTargetViews
 	{
 		HRESULT hr;
 		ID3D10Texture1D* pDepthStencil1D;
-		g_dsvDesc.ViewDimension = D3D10_DSV_DIMENSION_TEXTURE1D;
+		//g_dsvDesc.ViewDimension = D3D10_DSV_DIMENSION_TEXTURE1D;
 		D3D10_TEXTURE1D_DESC descDepth1D = g_desc1D;
 		descDepth1D.Width = width;
 		descDepth1D.Format = DXGI_FORMAT_D32_FLOAT;
@@ -716,7 +716,7 @@ class renderTargetViews
 		hr = ASRenderer::m_d3dDevice->CreateTexture1D(&descDepth1D, NULL, &pDepthStencil1D);
 		test(hr);
 
-		hr = ASRenderer::m_d3dDevice->CreateDepthStencilView(pDepthStencil1D, &g_dsvDesc, &m_dsv);
+		hr = ASRenderer::m_d3dDevice->CreateDepthStencilView(pDepthStencil1D, NULL, &m_dsv);
 		test(hr);
 	}
 
@@ -724,7 +724,7 @@ class renderTargetViews
 	{
 		HRESULT hr = S_OK;
 		//Depth stencil ... //////////////////////////////////////////////////////////////////////////////////
-		g_dsvDesc.ViewDimension = D3D10_DSV_DIMENSION_TEXTURE2D;
+		//g_dsvDesc.ViewDimension = D3D10_DSV_DIMENSION_TEXTURE2D;
 		D3D10_TEXTURE2D_DESC descDepth2D = g_desc2D;
 		descDepth2D.Width = width;
 		descDepth2D.Height = height;
@@ -736,7 +736,7 @@ class renderTargetViews
 		hr = ASRenderer::m_d3dDevice->CreateTexture2D(&descDepth2D, NULL, &pDepthStencil2D);
 		test(hr);
 
-		hr = ASRenderer::m_d3dDevice->CreateDepthStencilView(pDepthStencil2D, &g_dsvDesc, &m_dsv);
+		hr = ASRenderer::m_d3dDevice->CreateDepthStencilView(pDepthStencil2D, NULL, &m_dsv);
 		test(hr);
 	}
 

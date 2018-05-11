@@ -181,20 +181,14 @@ ASScreen::ASScreen(ASScene * scene)
 void ASScreen::InitViews()
 {
 	//Render target handlers
-	textures1D renderForOtherObjects;
-	renderForOtherObjects.push_back(&texture1D());
-	textures2D renderForSpecialEffects;
-	renderForSpecialEffects.push_back(&texture2D());
+	textures2D renderTargets{ &texture2D(), &texture2D() };
 
 	//renderForSpecialEffects will be used by the swap chain to display the final result of the screen
-	ASRenderer::SetSwapChain(renderForSpecialEffects);
+	ASRenderer::SetSwapChain(renderTargets);
 
-	ASSceneObject::InitViews(renderForOtherObjects);
-	ASSceneObject::InitViews(renderForSpecialEffects);
+	ASSceneObject::InitViews(renderTargets);
 
-	for (auto &t : renderForOtherObjects)
-		t->Release();
-	for (auto &t : renderForSpecialEffects)
+	for (auto &t : renderTargets)
 		t->Release();
 }
 

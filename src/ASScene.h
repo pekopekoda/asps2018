@@ -129,7 +129,6 @@ void ASScene::Init(vector<tuple<string,string>> vsBuf)
 	for (auto &o : m_objects)
 		o->InitShaderResources(vsBuf);
 
-	m_screen->InitViews();
 	for (auto &o : m_objects)
 	{
 		o->InitViews();
@@ -142,14 +141,14 @@ void ASScene::Init(vector<tuple<string,string>> vsBuf)
 		auto p = o->GetMainRenderResource();
 		m_screen->AddEffectResourceVariable(p);
 	}
-
+	m_screen->InitViews();
 
 	m_screen->InitBuffers();
+	for (auto &o : m_instances)
+		o->InitBuffers();
 	for (auto &o : m_objects)
 		o->InitBuffers();
 
-	for (auto &o : m_instances)
-		o->InitBuffers();
 }
 
 //--------------------------------------------------------------------------------------
