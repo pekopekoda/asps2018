@@ -121,13 +121,15 @@ vector<tuple<string, string>> ASUserInterface::GetUserFileBuffer()
 	//Read user interface text file////////////////////////////////////////////////////////////////////////
 	//This file is used by user to write extra parameters like gravity strength before program starts
 	ifstream fi(CONFIG_FILE);
+	HRESULT hr = HRESULT(bool(fi));
+	test(hr, "Cannot open config file");
 	string line = "";
 	string type, name, value;
 
 	size_t pos = 0;
 	string token;
 	string tmpBuf;
-	while (getline(fi, line))
+	for (std::string line; std::getline(fi, line); )
 	{
 		tmpBuf = line;
 		pos = tmpBuf.find(delimiter);

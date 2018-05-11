@@ -55,6 +55,7 @@ protected:
 public:
 	virtual UINT GetSizeOfVertexPrototype();
 	virtual UINT GetMaxCount();
+	virtual const char * GetTechniqueName();
 	virtual void InitShaderResources(vector<tuple<string,string>> vsBuf);
 	//Returns draw from buffer
 	ID3D10Buffer *GetFirstBuffer();
@@ -91,6 +92,11 @@ UINT ASSceneObject::GetSizeOfVertexPrototype()
 UINT ASSceneObject::GetMaxCount()
 {
 	return m_maxCount;
+}
+
+const char *ASSceneObject::GetTechniqueName()
+{
+	return m_techniqueName;
 }
 
 ASSceneObject::ASSceneObject(){}

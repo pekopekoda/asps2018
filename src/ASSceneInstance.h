@@ -18,7 +18,6 @@ protected:
 	ASMesh		  m_instanceMesh;
 	const char* m_meshPath;
 
-	const char* m_techniqueName;
 	ID3D10EffectTechnique	*m_technique;
 	//Handle on the layout for the vertex buffers
 	ID3D10InputLayout		*m_layout;
@@ -36,6 +35,8 @@ protected:
 		return{};
 	}
 	virtual UINT GetSizeOfVertexPrototype();
+	virtual const char *GetTechniqueName();
+	virtual const char *GetMeshPath();
 	ASSceneInstance();
 
 public:
@@ -54,6 +55,16 @@ UINT ASSceneInstance::GetSizeOfVertexPrototype()
 	return sizeof(VERTEX_PROTOTYPE);
 }
 
+const char * ASSceneInstance::GetTechniqueName()
+{
+	return "";
+}
+
+const char * ASSceneInstance::GetMeshPath()
+{
+	return m_meshPath;
+}
+
 void ASSceneInstance::SetInstancer(ASSceneObject *instancer)
 {
 	m_instancer = instancer;
@@ -70,14 +81,13 @@ void ASSceneInstance::InitBuffers()
 	UINT sizeOfInstancerVertexPrototype = m_instancer->GetSizeOfVertexPrototype();
 	m_instanceCount = m_instancer->GetMaxCount();
 	m_sizeOfInstancerVertexPrototype = sizeOfInstancerVertexPrototype;
-
-	m_technique = ASRenderer::GetTechniqueByName(m_techniqueName);
+	m_technique = ASRenderer::GetTechniqueByName(GetTechniqueName());
 	D3D10_PASS_DESC passDesc;
 	test(m_technique->GetPassByIndex(0)->GetDesc(&passDesc));
 	const vector<D3D10_INPUT_ELEMENT_DESC> proto = GetLayoutPrototype();
 	ASRenderer::CreateInputLayout(proto, passDesc, &m_layout);
-
-	HRESULT hr = (ASMesh::LoadFromFile(&m_instanceMesh, m_meshPath)) ? S_OK : S_FALSE;
+	auto mp = GetMeshPath();
+	HRESULT hr = (ASMesh::LoadFromFile(&m_instanceMesh, mp)) ? S_OK : S_FALSE;
 	test(hr, "Mesh load failed");
 	UINT vertexSize = m_instanceMesh.GetVertexSize();
 	UINT indexSize = m_instanceMesh.GetIndexSize();

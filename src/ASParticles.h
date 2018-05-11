@@ -14,7 +14,6 @@ extern const char* g_meshPath;
 class ASParticles : public ASSceneObject
 {
 	const UINT m_maxCount = 2000;
-	const char* m_techniqueName = "RenderParticles";
 	struct VERTEX_PROTOTYPE//particle vertex properties
 	{
 		D3DXVECTOR3 pos;
@@ -69,6 +68,7 @@ class ASParticles : public ASSceneObject
 
 public:
 	UINT GetSizeOfVertexPrototype();
+	const char *GetTechniqueName();
 	void FirstPass(bool isFirstFrame = false);
 
 	void InitShaderResources(vector<tuple<string, string>> vsBuf);
@@ -83,7 +83,6 @@ public:
 
 class ASParticlesInstances: public ASSceneInstance
 {
-	const char* m_techniqueName = "UpdateParticles";
 	const char* m_meshPath = g_meshPath;
 	ASParticles *m_instancer = nullptr;
 
@@ -109,6 +108,8 @@ public:
 			{ "MASS"    , 0, DXGI_FORMAT_R32_FLOAT,		  1, 36, D3D10_INPUT_PER_INSTANCE_DATA, 1 },
 		};
 	}
+	const char *GetTechniqueName();
+	const char *GetMeshPath();
 	void InitShaderResources(vector<tuple<string, string>> vsBuf);
 	
 };
@@ -116,6 +117,11 @@ public:
 UINT ASParticles::GetSizeOfVertexPrototype()
 {
 	return sizeof(VERTEX_PROTOTYPE);
+}
+
+const char * ASParticles::GetTechniqueName()
+{
+	return "RenderParticles";
 }
 
 void ASParticles::FirstPass(bool isFirstFrame)
@@ -238,7 +244,7 @@ void ASParticles::InitBuffers()
 	m_firstBuffer = NULL;
 	m_secondBuffer = NULL;
 
-	m_technique = ASRenderer::GetTechniqueByName(m_techniqueName);
+	m_technique = ASRenderer::GetTechniqueByName(GetTechniqueName());
 	D3D10_PASS_DESC passDesc;
 	m_technique->GetPassByIndex(0)->GetDesc(&passDesc);
 	const vector<D3D10_INPUT_ELEMENT_DESC> proto = GetLayoutPrototype();
@@ -337,6 +343,19 @@ ASParticles::ASParticles(ASScene *scene)
 ASParticles::~ASParticles(){}
 
 
+
+const char * ASParticlesInstances::GetTechniqueName()
+{
+	return "UpdateParticles";
+}
+
+const char * ASParticlesInstances::GetMeshPath()
+{
+	struct stat buffer;
+	if (stat(m_meshPath, &buffer) != 0)
+		test(E_FAIL, m_meshPath);
+	return m_meshPath;
+}
 
 void ASParticlesInstances::InitShaderResources(vector<tuple<string, string>> vsBuf)
 {

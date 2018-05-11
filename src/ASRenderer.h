@@ -14,7 +14,7 @@ using namespace std;
 #define RAND(a,b) ((rand()/(float)RAND_MAX)*((b)-(a))+(a))
 
 //Test routine for each device operation on the device
-void test(HRESULT hr, char *errMsg ="Unrecognized error.")
+void test(HRESULT hr, const char *errMsg ="Unrecognized error.")
 {
 	if (hr != S_OK)
 	{
