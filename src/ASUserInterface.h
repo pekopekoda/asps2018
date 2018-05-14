@@ -25,7 +25,7 @@ User config file should contain the following keywords:
 
 */
 
-#define CONFIG_FILE "config.cfg"
+#define CONFIG_FILE "./config.cfg"
 #define PARAM_FILE_MAX 30   //Number of lines which will be read in ASPSParameters.txt
 #define MAXPARTICLES_FILELINE 3
 #define EMISSIONRATE_FILELINE 4
@@ -120,9 +120,8 @@ vector<tuple<string, string>> ASUserInterface::GetUserFileBuffer()
 	string delimiter = "==>";
 	//Read user interface text file////////////////////////////////////////////////////////////////////////
 	//This file is used by user to write extra parameters like gravity strength before program starts
-	ifstream fi(CONFIG_FILE);
-	HRESULT hr = HRESULT(bool(fi));
-	test(hr, "Cannot open config file");
+	ifstream fi("../config.cfg");
+	test(HRESULT(bool(!fi)), "Cannot open config file");
 	string line = "";
 	string type, name, value;
 

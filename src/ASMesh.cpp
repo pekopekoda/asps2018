@@ -38,6 +38,10 @@ ASMesh::	~ASMesh ()
 
 bool ASMesh::LoadFromFile		(ASMesh* mesh, const char* filename)
 {
+	ifstream fi = ifstream(filename);
+	bool exists = bool(fi);
+	fi.close();
+	assert(exists&&"Mesh path does not exist");
 	FILE* fp;
 	char buffer [256];
 	unsigned int vType = 0;

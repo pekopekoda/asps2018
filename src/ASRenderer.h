@@ -828,6 +828,10 @@ public:
 
 	HRESULT SetFromFile(const char *path)
 	{
+		ifstream fi = ifstream(path);
+		HRESULT exists = bool(fi) ? S_OK : S_FALSE;
+		fi.close();
+		test(exists, "Shader resource file does not exist");
 		//Initialization with a file. It won't be necessary to push any output texture then.
 		D3DX10_IMAGE_LOAD_INFO loadInfo;
 		ZeroMemory(&loadInfo, sizeof(D3DX10_IMAGE_LOAD_INFO));

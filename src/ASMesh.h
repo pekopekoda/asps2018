@@ -2,6 +2,7 @@
 
 #include <string>
 #include <fstream>
+#include <assert.h>
 using namespace std;
 
 //Extract mesh from *.aso files and sort informations

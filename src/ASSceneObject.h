@@ -6,8 +6,8 @@
 #include "ASUserInterface.h"
 #include "ASMesh.h"
 
-const char* g_meshPath = "../Medias/Meshes/";
-const char* g_texturePath = "../Medias/Textures/";
+string g_meshPath = "../../Medias/Meshes/";
+string g_texturePath = "../../Medias/Textures/";
 
 class ASScene;
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

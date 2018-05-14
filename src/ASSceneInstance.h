@@ -16,7 +16,7 @@ protected:
 	ID3D10Buffer *m_indexedBuffer;
 	//Vertex buffer of an original mesh
 	ASMesh		  m_instanceMesh;
-	const char* m_meshPath;
+	string m_meshPath = "__undefined__";
 
 	ID3D10EffectTechnique	*m_technique;
 	//Handle on the layout for the vertex buffers
@@ -36,7 +36,7 @@ protected:
 	}
 	virtual UINT GetSizeOfVertexPrototype();
 	virtual const char *GetTechniqueName();
-	virtual const char *GetMeshPath();
+	virtual string GetMeshPath();
 	ASSceneInstance();
 
 public:
@@ -60,7 +60,7 @@ const char * ASSceneInstance::GetTechniqueName()
 	return "";
 }
 
-const char * ASSceneInstance::GetMeshPath()
+string ASSceneInstance::GetMeshPath()
 {
 	return m_meshPath;
 }
@@ -86,8 +86,8 @@ void ASSceneInstance::InitBuffers()
 	test(m_technique->GetPassByIndex(0)->GetDesc(&passDesc));
 	const vector<D3D10_INPUT_ELEMENT_DESC> proto = GetLayoutPrototype();
 	ASRenderer::CreateInputLayout(proto, passDesc, &m_layout);
-	auto mp = GetMeshPath();
-	HRESULT hr = (ASMesh::LoadFromFile(&m_instanceMesh, mp)) ? S_OK : S_FALSE;
+	string mp = GetMeshPath();
+	HRESULT hr = (ASMesh::LoadFromFile(&m_instanceMesh, mp.c_str())) ? S_OK : S_FALSE;
 	test(hr, "Mesh load failed");
 	UINT vertexSize = m_instanceMesh.GetVertexSize();
 	UINT indexSize = m_instanceMesh.GetIndexSize();

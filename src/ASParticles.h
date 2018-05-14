@@ -9,7 +9,7 @@ constexpr char* g_prampCfg = "Particle ramp color";
 constexpr char* g_pnbrCfg = "Particle number";
 //constexpr uint8_t g_changeRate = 82; //Particle emission per second
 
-extern const char* g_meshPath;
+extern string g_meshPath;
 
 class ASParticles : public ASSceneObject
 {
@@ -83,7 +83,7 @@ public:
 
 class ASParticlesInstances: public ASSceneInstance
 {
-	const char* m_meshPath = g_meshPath;
+	string m_meshPath = g_meshPath;
 	ASParticles *m_instancer = nullptr;
 
 	struct VERTEX_PROTOTYPE//particle vertex properties
@@ -109,7 +109,7 @@ public:
 		};
 	}
 	const char *GetTechniqueName();
-	const char *GetMeshPath();
+	string GetMeshPath();
 	void InitShaderResources(vector<tuple<string, string>> vsBuf);
 	
 };
@@ -349,11 +349,8 @@ const char * ASParticlesInstances::GetTechniqueName()
 	return "UpdateParticles";
 }
 
-const char * ASParticlesInstances::GetMeshPath()
+string ASParticlesInstances::GetMeshPath()
 {
-	struct stat buffer;
-	if (stat(m_meshPath, &buffer) != 0)
-		test(E_FAIL, m_meshPath);
 	return m_meshPath;
 }
 
@@ -368,7 +365,7 @@ void ASParticlesInstances::InitShaderResources(vector<tuple<string, string>> vsB
 
 		if (name == g_pmeshCfg)
 		{
-			m_meshPath = g_meshPath + *value.c_str();
+			m_meshPath = g_meshPath + value;
 		}
 
 		m_vEffectResourceVariable2D.Add(&m_rrMainRenderResource);
