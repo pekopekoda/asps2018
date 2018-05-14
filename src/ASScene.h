@@ -126,22 +126,19 @@ void ASScene::Init(vector<tuple<string,string>> vsBuf)
 	m_instances.back()->SetInstancer(m_objects.back().get());
 
 	m_screen->InitShaderResources(vsBuf);
-
 	for (auto &o : m_objects)
 	{
 		o->InitShaderResources(vsBuf);
-		o->InitViews();
 		auto p = o->GetMainRenderResource();
 		m_screen->AddEffectResourceVariable(p);
 	}
 
 	for (auto &o : m_instances)
-	{
 		o->InitShaderResources(vsBuf);
-		auto p = o->GetMainRenderResource();
-		m_screen->AddEffectResourceVariable(p);
-	}
+
 	m_screen->InitViews();
+	for (auto &o : m_objects)
+		o->InitViews();
 
 	m_screen->InitBuffers();
 	for (auto &o : m_instances)

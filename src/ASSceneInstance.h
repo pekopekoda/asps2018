@@ -81,11 +81,11 @@ void ASSceneInstance::InitBuffers()
 	UINT sizeOfInstancerVertexPrototype = m_instancer->GetSizeOfVertexPrototype();
 	m_instanceCount = m_instancer->GetMaxCount();
 	m_sizeOfInstancerVertexPrototype = sizeOfInstancerVertexPrototype;
+
 	m_technique = ASRenderer::GetTechniqueByName(GetTechniqueName());
 	D3D10_PASS_DESC passDesc;
 	test(m_technique->GetPassByIndex(0)->GetDesc(&passDesc));
-	const vector<D3D10_INPUT_ELEMENT_DESC> proto = GetLayoutPrototype();
-	ASRenderer::CreateInputLayout(proto, passDesc, &m_layout);
+	ASRenderer::CreateInputLayout(GetLayoutPrototype(), passDesc, &m_layout);
 	string mp = GetMeshPath();
 	HRESULT hr = (ASMesh::LoadFromFile(&m_instanceMesh, mp.c_str())) ? S_OK : S_FALSE;
 	test(hr, "Mesh load failed");
